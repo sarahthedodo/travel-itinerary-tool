@@ -1,5 +1,5 @@
 {
-  "name": "TripSync - Travel & Budget Planner",
+  "name": "MBDB - Travel & Budget Planner",
   "description": "Multi-plan travel budgeting and itinerary comparison tool with real-time multi-user collaboration and Supabase sync.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
