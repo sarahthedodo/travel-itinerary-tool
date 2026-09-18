@@ -4,14 +4,13 @@
  */
 
 import { UserProfile } from '../types';
+import { generateUUID } from './uuid';
 
 /**
  * Creates a clean default user profile if none exists in localStorage
  */
 export function createDefaultUser(): UserProfile {
-  const randomId = typeof crypto !== 'undefined' && crypto.randomUUID 
-    ? crypto.randomUUID() 
-    : `user-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const randomId = generateUUID();
 
   const presetAvatars = ['✈️', '🎒', '🧳', '🗺️', '📸', '🍵', '🍣', '🌸'];
   const randomAvatar = presetAvatars[Math.floor(Math.random() * presetAvatars.length)];
@@ -20,7 +19,7 @@ export function createDefaultUser(): UserProfile {
 
   return {
     id: randomId,
-    name: 'Traveler',
+    name: 'momo',
     avatar_url: randomAvatar,
     color: randomColor,
     last_active: new Date().toISOString(),

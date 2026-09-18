@@ -28,11 +28,14 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
-  StickyNote
+  StickyNote,
+  LogOut
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { isAccessAuthorized, revokeAccessAuthorization } from './lib/supabase';
+import { PasswordAuthModal } from './components/PasswordAuthModal';
 
-export default function App() {
+function MainWorkspace({ onSignOut }: { onSignOut: () => void }) {
   const { t } = useTranslation();
   const {
     currentUser,
@@ -356,6 +359,20 @@ export default function App() {
                 <span>{t('footer.configBtn')}</span>
               </button>
 
+              <button
+                id="footer-sign-out-btn"
+                onClick={() => {
+                  if (confirm(t('auth.signOutConfirm'))) {
+                    onSignOut();
+                  }
+                }}
+                className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-[#FAF8F5] hover:bg-[#F5ECEB] text-stone-700 hover:text-[#A25A60] border border-stone-200/90 text-xs font-medium flex items-center space-x-1.5 transition-colors cursor-pointer shadow-2xs"
+                title={t('auth.signOut')}
+              >
+                <LogOut className="w-3.5 h-3.5 text-stone-500" />
+                <span className="hidden sm:inline">{t('auth.signOutShort')}</span>
+              </button>
+
               {trips.length > 0 && (
                 <button
                   onClick={() => {
@@ -407,6 +424,7 @@ export default function App() {
           }, 150);
         }}
         notesCount={notesCount}
+        onSignOut={onSignOut}
       />
 
       {/* 5. Modals */}
@@ -462,4 +480,25 @@ export default function App() {
       )}
     </div>
   );
+}
+
+export default function App() {
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(() => isAccessAuthorized());
+
+  const handleSignOut = () => {
+    revokeAccessAuthorization();
+    setIsAuthorized(false);
+  };
+
+  if (!isAuthorized) {
+    return (
+      <PasswordAuthModal
+        onUnlocked={() => {
+          setIsAuthorized(true);
+        }}
+      />
+    );
+  }
+
+  return <MainWorkspace onSignOut={handleSignOut} />;
 }

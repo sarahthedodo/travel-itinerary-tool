@@ -218,6 +218,21 @@
       "submit": "Save Settings"
     }
   },
+  "auth": {
+    "title": "Travel Workspace",
+    "subtitle": "Please enter the preset access password to unlock the workspace",
+    "passwordPlaceholder": "Enter access password...",
+    "enterPasswordPrompt": "Please enter the password",
+    "unlockBtn": "Unlock Space",
+    "wrongPassword": "Incorrect password, please try again",
+    "wabiSabiTip": "Serene & deliberate, embark on a thoughtful journey",
+    "defaultTip": "Preset password",
+    "signOut": "Clear Auth / Sign Out",
+    "signOutShort": "Sign Out",
+    "signOutConfirm": "Are you sure you want to clear access authorization? You will need to enter the password again on next visit.",
+    "statusAuthorized": "Access Authorized",
+    "statusUnauthorized": "Unauthorized"
+  },
   "bottomHelper": {
     "title": "Real-time Multi-User Collaboration",
     "desc": "Open this page in another browser tab or private window, or share the invite code with friends to experience millisecond real-time sync."

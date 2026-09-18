@@ -13,6 +13,7 @@ import {
 } from '../types';
 import { getSupabase, getSavedConfig } from '../lib/supabase';
 import { createDefaultUser } from '../lib/sampleData';
+import { generateUUID, ensureUUID, isValidUUID } from '../lib/uuid';
 
 const LOCAL_STORAGE_KEY_USER = 'tripsync_active_user';
 const LOCAL_STORAGE_KEY_TRIPS = 'tripsync_all_trips';
@@ -35,7 +36,16 @@ export function useRealtimeSync() {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY_USER);
       if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.warn(e); }
+        try { 
+          const parsed = JSON.parse(saved); 
+          if (parsed && typeof parsed === 'object') {
+            if (!isValidUUID(parsed.id)) {
+              parsed.id = generateUUID();
+              localStorage.setItem(LOCAL_STORAGE_KEY_USER, JSON.stringify(parsed));
+            }
+            return parsed;
+          }
+        } catch (e) { console.warn(e); }
       }
     }
     const def = createDefaultUser();
@@ -502,7 +512,7 @@ export function useRealtimeSync() {
   // MUTATION: Create a New Trip
   const createTrip = useCallback(async (data: { title: string; destination?: string; currency?: string }) => {
     const supabase = getSupabase();
-    const tripId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `trip-${Date.now()}`;
+    const tripId = ensureUUID();
     const inviteCode = `TRIP-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
 
     const newTrip: Trip = {
@@ -592,13 +602,16 @@ export function useRealtimeSync() {
   // MUTATION: Add or Edit Timeline Item
   const upsertTimelineItem = useCallback(async (itemData: Omit<TimelineItem, 'id'> & { id?: string }) => {
     const supabase = getSupabase();
-    const itemId = itemData.id || `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const itemId = ensureUUID(itemData.id);
+    const safePlanId = ensureUUID(itemData.plan_id);
+    const safeAddedBy = ensureUUID(itemData.added_by || currentUser.id);
     
     const fullItem: TimelineItem = {
       ...itemData,
       id: itemId,
+      plan_id: safePlanId,
       currency: itemData.currency || activeTrip?.currency || 'USD',
-      added_by: itemData.added_by || currentUser.id,
+      added_by: safeAddedBy,
       added_by_name: itemData.added_by_name || currentUser.name,
       created_at: itemData.created_at || new Date().toISOString(),
     };
@@ -624,7 +637,10 @@ export function useRealtimeSync() {
 
     if (supabase) {
       try {
-        await supabase.from('timeline_items').upsert(fullItem);
+        const { error } = await supabase.from('timeline_items').upsert(fullItem);
+        if (error) {
+          console.error('Supabase timeline item upsert error:', error);
+        }
       } catch (err) {
         console.error('Failed to sync item to Supabase:', err);
       }
@@ -661,14 +677,14 @@ export function useRealtimeSync() {
     }
 
     const supabase = getSupabase();
-    const planId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `plan-${Date.now()}`;
+    const planId = ensureUUID();
 
     const newPlan: Plan = {
       ...planData,
       id: planId,
-      trip_id: activeTrip.id,
+      trip_id: ensureUUID(activeTrip.id),
       votes: 0,
-      created_by: currentUser.id,
+      created_by: ensureUUID(currentUser.id),
       created_at: new Date().toISOString(),
     };
 
@@ -684,7 +700,10 @@ export function useRealtimeSync() {
 
     if (supabase) {
       try {
-        await supabase.from('plans').insert(newPlan);
+        const { error } = await supabase.from('plans').insert(newPlan);
+        if (error) {
+          console.error('Supabase plan insert error:', error);
+        }
       } catch (err) {
         console.error('Failed to add plan to Supabase:', err);
       }
@@ -722,6 +741,8 @@ export function useRealtimeSync() {
     const supabase = getSupabase();
     const hasVoted = Boolean(userVotes[planId]);
     const delta = hasVoted ? -1 : 1;
+    const safePlanId = ensureUUID(planId);
+    const safeUserId = ensureUUID(currentUser.id);
 
     // Toggle local vote status
     setUserVotes((prev) => {
@@ -748,14 +769,14 @@ export function useRealtimeSync() {
       try {
         const targetPlan = plans.find((p) => p.id === planId);
         const newVotes = Math.max(0, (targetPlan?.votes || 0) + delta);
-        await supabase.from('plans').update({ votes: newVotes }).eq('id', planId);
+        await supabase.from('plans').update({ votes: newVotes }).eq('id', safePlanId);
 
         if (hasVoted) {
-          await supabase.from('plan_votes').delete().eq('plan_id', planId).eq('user_id', currentUser.id);
+          await supabase.from('plan_votes').delete().eq('plan_id', safePlanId).eq('user_id', safeUserId);
         } else {
           await supabase.from('plan_votes').upsert({
-            plan_id: planId,
-            user_id: currentUser.id,
+            plan_id: safePlanId,
+            user_id: safeUserId,
             created_at: new Date().toISOString(),
           });
         }

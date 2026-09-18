@@ -13,9 +13,15 @@ import {
   ShieldCheck, 
   Key, 
   Sparkles,
-  RotateCcw
+  RotateCcw,
+  LogOut
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { 
+  DEFAULT_SUPABASE_URL, 
+  DEFAULT_SUPABASE_ANON_KEY,
+  revokeAccessAuthorization
+} from '../lib/supabase';
 
 interface SqlSetupModalProps {
   isOpen: boolean;
@@ -114,10 +120,10 @@ export const SqlSetupModal: React.FC<SqlSetupModalProps> = ({
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [supabaseUrl, setSupabaseUrl] = useState(() => {
-    return localStorage.getItem('tripsync_supabase_url') || import.meta.env.VITE_SUPABASE_URL || '';
+    return localStorage.getItem('tripsync_supabase_url') || DEFAULT_SUPABASE_URL;
   });
   const [supabaseAnonKey, setSupabaseAnonKey] = useState(() => {
-    return localStorage.getItem('tripsync_supabase_anon_key') || import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+    return localStorage.getItem('tripsync_supabase_anon_key') || DEFAULT_SUPABASE_ANON_KEY;
   });
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [testing, setTesting] = useState(false);
@@ -328,7 +334,22 @@ export const SqlSetupModal: React.FC<SqlSetupModalProps> = ({
                 </a>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm(t('auth.signOutConfirm'))) {
+                      revokeAccessAuthorization();
+                      window.location.reload();
+                    }
+                  }}
+                  className="min-h-[44px] px-3 py-2 text-xs font-medium text-[#A25A60] hover:text-red-700 hover:bg-[#F5ECEB] rounded-xl transition-colors cursor-pointer flex items-center space-x-1"
+                  title={t('auth.signOut')}
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>{t('auth.signOutShort')}</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={handleClear}

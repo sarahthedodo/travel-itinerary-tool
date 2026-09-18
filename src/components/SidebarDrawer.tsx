@@ -18,7 +18,9 @@ import {
   MapPin,
   Calendar,
   Sparkles,
-  StickyNote
+  StickyNote,
+  ShieldCheck,
+  LogOut
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -36,6 +38,7 @@ interface SidebarDrawerProps {
   teamMembers: UserProfile[];
   onOpenNotes?: () => void;
   notesCount?: number;
+  onSignOut?: () => void;
 }
 
 export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
@@ -52,6 +55,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   teamMembers,
   onOpenNotes,
   notesCount,
+  onSignOut,
 }) => {
   const { t } = useTranslation();
   const [copiedInvite, setCopiedInvite] = useState(false);
@@ -388,6 +392,39 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                 ))}
               </div>
             </div>
+
+            {/* 5. Access Security & Sign Out */}
+            {onSignOut && (
+              <div className="space-y-3 pt-4 border-t border-stone-200/70">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-stone-700 flex items-center space-x-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#5B7065]" />
+                    <span>{t('auth.title')}</span>
+                  </span>
+                  <span className="text-[10px] text-[#5B7065] bg-[#5B7065]/10 px-2 py-0.5 rounded-full font-medium">
+                    {t('auth.statusAuthorized')}
+                  </span>
+                </div>
+
+                <div className="bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-wabi space-y-2.5">
+                  <p className="text-xs text-stone-500 leading-relaxed">
+                    {t('auth.wabiSabiTip')}
+                  </p>
+                  <button
+                    id="drawer-sign-out-btn"
+                    onClick={() => {
+                      if (confirm(t('auth.signOutConfirm'))) {
+                        onSignOut();
+                      }
+                    }}
+                    className="w-full min-h-[40px] px-3 py-2 rounded-xl bg-[#F5ECEB]/80 hover:bg-[#F5ECEB] border border-[#EBDCDD] text-xs font-medium text-[#A25A60] flex items-center justify-center space-x-1.5 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>{t('auth.signOut')}</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Drawer Footer */}

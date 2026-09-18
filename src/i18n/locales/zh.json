@@ -218,6 +218,21 @@
       "submit": "保存设置"
     }
   },
+  "auth": {
+    "title": "旅行计划空间",
+    "subtitle": "请输入预设访问密码以解锁多人协同工作台",
+    "passwordPlaceholder": "输入访问密码...",
+    "enterPasswordPrompt": "请输入访问密码",
+    "unlockBtn": "解锁进入",
+    "wrongPassword": "密码不正确，请重试",
+    "wabiSabiTip": "静谧沉淀，开启一段自在从容的旅程",
+    "defaultTip": "预设密码",
+    "signOut": "清除授权 / 退出登录",
+    "signOutShort": "退出授权",
+    "signOutConfirm": "确定要清除当前浏览器的访问授权吗？清除后下次访问将需要重新输入访问密码。",
+    "statusAuthorized": "已授权访问",
+    "statusUnauthorized": "未授权"
+  },
   "bottomHelper": {
     "title": "多人实时协同与多端同步",
     "desc": "在另一个浏览器标签页或无痕窗口打开本应用，或分享邀请码给好友，体验跨标签页毫秒级实时同步。任何改动或投票都会即刻广播。"
