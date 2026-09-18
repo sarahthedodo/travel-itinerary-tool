@@ -79,15 +79,15 @@ const WASHI_THEMES: Record<WashiColor, {
     textColor: 'text-stone-800',
     hexLabel: '#E8EFE6',
   },
-  // sakura: {
-  //   nameKey: 'colorSakura',
-  //   cardBg: 'bg-[#F5ECEB]',
-  //   border: 'border-[#EBDCDD]',
-  //   tapeBg: 'bg-[#E2CFD2]/90',
-  //   dotColor: '#B87278',
-  //   textColor: 'text-stone-800',
-  //   hexLabel: '#F5ECEB',
-  // },
+  sakura: {
+    nameKey: 'colorSakura',
+    cardBg: 'bg-[#F5ECEB]',
+    border: 'border-[#EBDCDD]',
+    tapeBg: 'bg-[#E2CFD2]/90',
+    dotColor: '#B87278',
+    textColor: 'text-stone-800',
+    hexLabel: '#F5ECEB',
+  },
   barley: {
     nameKey: 'colorBarley',
     cardBg: 'bg-[#FAF4E8]',
@@ -398,7 +398,7 @@ export const StickyNotesWall: React.FC<StickyNotesWallProps> = ({
             {/* Responsive Grid: 2 columns on mobile, 3 on tablet, 5 on desktop */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-2.5 w-full">
               {(['oat', 'matcha', 'sakura', 'barley', 'slate'] as WashiColor[]).map((c) => {
-                const theme = WASHI_THEMES[c];
+                const theme = WASHI_THEMES[c] || WASHI_THEMES.oat;
                 const isSelected = selectedColor === c;
                 return (
                   <button

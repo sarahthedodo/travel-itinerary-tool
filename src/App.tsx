@@ -68,7 +68,7 @@ function MainWorkspace({ onSignOut, startInPersonaSetup = false }: { onSignOut: 
   const [activeView, setActiveView] = useState<'compare' | 'timeline'>('compare');
   const [activePlanId, setActivePlanId] = useState<string>(plans[0]?.id || '');
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
-  const [notesCount, setNotesCount] = useState(2);
+  const [notesCount, setNotesCount] = useState(0);
 
   // Modal dialog states
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -313,17 +313,19 @@ function MainWorkspace({ onSignOut, startInPersonaSetup = false }: { onSignOut: 
                   </div>
                 </div>
 
-                {/* Expanded Notes Wall */}
-                {isNotesExpanded && (
-                  <div className="p-4 sm:p-6 pt-0 border-t border-stone-100 bg-[#FAF8F5]/30 animate-in fade-in duration-300">
-                    <StickyNotesWall
-                      key={activeTrip.id}
-                      tripId={activeTrip.id}
-                      currentUser={currentUser}
-                      onNotesCountChange={setNotesCount}
-                    />
-                  </div>
-                )}
+                {/* Keep mounted while collapsed so the badge stays synced. */}
+                <div
+                  className={isNotesExpanded
+                    ? 'p-4 sm:p-6 pt-0 border-t border-stone-100 bg-[#FAF8F5]/30 animate-in fade-in duration-300'
+                    : 'hidden'}
+                >
+                  <StickyNotesWall
+                    key={activeTrip.id}
+                    tripId={activeTrip.id}
+                    currentUser={currentUser}
+                    onNotesCountChange={setNotesCount}
+                  />
+                </div>
               </div>
             </div>
           </>
