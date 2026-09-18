@@ -60,7 +60,13 @@
     "collapse": "Collapse Notes",
     "floatingBtn": "Thoughts & Notes",
     "noteCount": "{{count}} memos",
-    "quickAdd": "New Memo"
+    "quickAdd": "New Memo",
+    "sync": {
+      "local": "Saved on this device only",
+      "syncing": "Syncing notes...",
+      "synced": "Notes synced to the shared database",
+      "error": "Database notes table is unavailable. Run the latest setup SQL; notes remain saved on this device."
+    }
   },
   "sidebar": {
     "title": "Travel Workspace",

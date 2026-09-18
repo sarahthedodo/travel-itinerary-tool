@@ -317,6 +317,7 @@ function MainWorkspace({ onSignOut, startInPersonaSetup = false }: { onSignOut: 
                 {isNotesExpanded && (
                   <div className="p-4 sm:p-6 pt-0 border-t border-stone-100 bg-[#FAF8F5]/30 animate-in fade-in duration-300">
                     <StickyNotesWall
+                      key={activeTrip.id}
                       tripId={activeTrip.id}
                       currentUser={currentUser}
                       onNotesCountChange={setNotesCount}

@@ -65,6 +65,21 @@ CREATE TABLE IF NOT EXISTS public.plan_votes (
     UNIQUE(plan_id, user_id)
 );
 
+-- 6. Create Sticky Notes Table
+CREATE TABLE IF NOT EXISTS public.sticky_notes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    trip_id UUID NOT NULL REFERENCES public.trips(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    color TEXT DEFAULT 'oat' NOT NULL,
+    author_id TEXT DEFAULT '',
+    author_name TEXT DEFAULT 'Anonymous' NOT NULL,
+    author_color TEXT DEFAULT '#5B7065' NOT NULL,
+    is_pinned BOOLEAN DEFAULT false NOT NULL,
+    rotation NUMERIC(5, 2) DEFAULT 0 NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- ==============================================================================
 -- Row Level Security (RLS) Configuration
 -- For a lightweight frictionless travel collaboration app, we enable RLS
@@ -76,6 +91,7 @@ ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.timeline_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.plan_votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sticky_notes ENABLE ROW LEVEL SECURITY;
 
 -- Profiles Policies
 CREATE POLICY "Public full access to profiles" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
@@ -92,6 +108,9 @@ CREATE POLICY "Public full access to timeline_items" ON public.timeline_items FO
 -- Plan Votes Policies
 CREATE POLICY "Public full access to plan_votes" ON public.plan_votes FOR ALL USING (true) WITH CHECK (true);
 
+-- Sticky Notes Policies
+CREATE POLICY "Public full access to sticky_notes" ON public.sticky_notes FOR ALL USING (true) WITH CHECK (true);
+
 -- ==============================================================================
 -- Enable Realtime Broadcast for all collaborative tables
 -- ==============================================================================
@@ -101,6 +120,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.trips;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.plans;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.timeline_items;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.plan_votes;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.sticky_notes;
 
 -- Ensure full replica identity for realtime update payloads
 ALTER TABLE public.profiles REPLICA IDENTITY FULL;
@@ -108,6 +128,7 @@ ALTER TABLE public.trips REPLICA IDENTITY FULL;
 ALTER TABLE public.plans REPLICA IDENTITY FULL;
 ALTER TABLE public.timeline_items REPLICA IDENTITY FULL;
 ALTER TABLE public.plan_votes REPLICA IDENTITY FULL;
+ALTER TABLE public.sticky_notes REPLICA IDENTITY FULL;
 
 -- ==============================================================================
 -- Initial Demo Trip Seed Data (Optional, but great for instant testing)

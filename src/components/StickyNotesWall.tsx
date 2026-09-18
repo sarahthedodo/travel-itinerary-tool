@@ -15,6 +15,8 @@ import {
   Calendar
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { getSupabase } from '../lib/supabase';
+import { generateUUID, isValidUUID } from '../lib/uuid';
 
 export type WashiColor = 'oat' | 'matcha' | 'sakura' | 'barley' | 'slate';
 
@@ -28,6 +30,19 @@ export interface StickyNoteItem {
   authorColor: string;
   isPinned: boolean;
   createdAt: string;
+  rotation: number;
+}
+
+interface StickyNoteRow {
+  id: string;
+  trip_id: string;
+  text: string;
+  color: WashiColor;
+  author_id: string;
+  author_name: string;
+  author_color: string;
+  is_pinned: boolean;
+  created_at: string;
   rotation: number;
 }
 
@@ -95,6 +110,32 @@ const WASHI_THEMES: Record<WashiColor, {
 
 const ROTATION_OPTIONS = [-1.5, 1.2, -0.8, 1.8, -1.1, 0.6, -1.6, 1.4];
 
+const fromDatabaseRow = (row: StickyNoteRow): StickyNoteItem => ({
+  id: row.id,
+  tripId: row.trip_id,
+  text: row.text,
+  color: row.color,
+  authorId: row.author_id,
+  authorName: row.author_name,
+  authorColor: row.author_color,
+  isPinned: row.is_pinned,
+  createdAt: row.created_at,
+  rotation: Number(row.rotation),
+});
+
+const toDatabaseRow = (note: StickyNoteItem): StickyNoteRow => ({
+  id: note.id,
+  trip_id: note.tripId,
+  text: note.text,
+  color: note.color,
+  author_id: note.authorId,
+  author_name: note.authorName,
+  author_color: note.authorColor,
+  is_pinned: note.isPinned,
+  created_at: note.createdAt,
+  rotation: note.rotation,
+});
+
 export const StickyNotesWall: React.FC<StickyNotesWallProps> = ({
   tripId,
   currentUser,
@@ -141,6 +182,7 @@ export const StickyNotesWall: React.FC<StickyNotesWallProps> = ({
 
   const [inputText, setInputText] = useState('');
   const [selectedColor, setSelectedColor] = useState<WashiColor>('matcha');
+  const [syncState, setSyncState] = useState<'local' | 'syncing' | 'synced' | 'error'>('local');
 
   // Notify parent of notes count
   useEffect(() => {
@@ -171,13 +213,103 @@ export const StickyNotesWall: React.FC<StickyNotesWallProps> = ({
     return () => window.removeEventListener('storage', handleStorage);
   }, [storageKey]);
 
+  useEffect(() => {
+    const supabase = getSupabase();
+    if (!supabase) {
+      setSyncState('local');
+      return;
+    }
+
+    let isMounted = true;
+    setSyncState('syncing');
+
+    const loadNotes = async () => {
+      const { data, error } = await supabase
+        .from('sticky_notes')
+        .select('*')
+        .eq('trip_id', tripId)
+        .order('created_at', { ascending: false });
+
+      if (!isMounted) return;
+      if (error) {
+        console.error('Failed to load sticky notes from Supabase:', error);
+        setSyncState('error');
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setNotes((data as StickyNoteRow[]).map(fromDatabaseRow));
+      } else if (notes.length > 0) {
+        const migratedNotes = notes.map((note) => ({
+          ...note,
+          id: isValidUUID(note.id) ? note.id : generateUUID(),
+        }));
+        const { error: migrationError } = await supabase
+          .from('sticky_notes')
+          .upsert(migratedNotes.map(toDatabaseRow));
+
+        if (!isMounted) return;
+        if (migrationError) {
+          console.error('Failed to migrate local sticky notes:', migrationError);
+          setSyncState('error');
+          return;
+        }
+        setNotes(migratedNotes);
+      }
+      setSyncState('synced');
+    };
+
+    loadNotes();
+
+    const channel = supabase
+      .channel(`sticky-notes-${tripId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sticky_notes', filter: `trip_id=eq.${tripId}` },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const deleted = payload.old as { id?: string };
+            if (deleted.id) setNotes((prev) => prev.filter((note) => note.id !== deleted.id));
+            return;
+          }
+
+          const changed = fromDatabaseRow(payload.new as StickyNoteRow);
+          setNotes((prev) => {
+            const index = prev.findIndex((note) => note.id === changed.id);
+            if (index < 0) return [changed, ...prev];
+            const next = [...prev];
+            next[index] = changed;
+            return next;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [tripId]);
+
+  const saveNoteToDatabase = async (note: StickyNoteItem) => {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    const { error } = await supabase.from('sticky_notes').upsert(toDatabaseRow(note));
+    if (error) {
+      console.error('Failed to save sticky note:', error);
+      setSyncState('error');
+    } else {
+      setSyncState('synced');
+    }
+  };
+
   const handleAddNote = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
     const randomRot = ROTATION_OPTIONS[Math.floor(Math.random() * ROTATION_OPTIONS.length)];
     const newNote: StickyNoteItem = {
-      id: `note-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: generateUUID(),
       tripId,
       text: inputText.trim(),
       color: selectedColor,
@@ -190,17 +322,29 @@ export const StickyNotesWall: React.FC<StickyNotesWallProps> = ({
     };
 
     setNotes((prev) => [newNote, ...prev]);
+    saveNoteToDatabase(newNote);
     setInputText('');
   };
 
   const handleTogglePin = (id: string) => {
-    setNotes((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isPinned: !n.isPinned } : n))
-    );
+    const note = notes.find((candidate) => candidate.id === id);
+    if (!note) return;
+    const updatedNote = { ...note, isPinned: !note.isPinned };
+    setNotes((prev) => prev.map((candidate) => candidate.id === id ? updatedNote : candidate));
+    saveNoteToDatabase(updatedNote);
   };
 
   const handleDeleteNote = (id: string) => {
     setNotes((prev) => prev.filter((n) => n.id !== id));
+    const supabase = getSupabase();
+    if (supabase) {
+      supabase.from('sticky_notes').delete().eq('id', id).then(({ error }) => {
+        if (error) {
+          console.error('Failed to delete sticky note:', error);
+          setSyncState('error');
+        }
+      });
+    }
   };
 
   // Pinned notes appear first
@@ -221,6 +365,9 @@ export const StickyNotesWall: React.FC<StickyNotesWallProps> = ({
           </div>
           <p className="text-xs text-stone-500 leading-relaxed">
             {t('stickyNotes.cornerDesc')}
+          </p>
+          <p className={`text-[11px] ${syncState === 'error' ? 'text-[#A25A60]' : 'text-stone-400'}`}>
+            {t(`stickyNotes.sync.${syncState}`)}
           </p>
         </div>
 

@@ -60,7 +60,13 @@
     "collapse": "收起便签角",
     "floatingBtn": "随想便签",
     "noteCount": "{{count}} 张随想便签",
-    "quickAdd": "新建便签"
+    "quickAdd": "新建便签",
+    "sync": {
+      "local": "仅保存在当前设备",
+      "syncing": "正在同步便签...",
+      "synced": "便签已同步至共享数据库",
+      "error": "数据库便签表尚不可用，请执行最新版建表 SQL；便签仍会保存在当前设备。"
+    }
   },
   "sidebar": {
     "title": "旅行协作中心",
