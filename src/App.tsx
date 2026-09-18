@@ -16,7 +16,7 @@ import { AddEditItemModal } from './components/AddEditItemModal';
 import { AddPlanModal } from './components/AddPlanModal';
 import { SqlSetupModal } from './components/SqlSetupModal';
 import { TripMetaModal } from './components/TripMetaModal';
-import { TimelineItem } from './types';
+import { TimelineItem, Trip } from './types';
 import { 
   Bell, 
   Database,
@@ -35,7 +35,7 @@ import { useTranslation } from 'react-i18next';
 import { isAccessAuthorized, revokeAccessAuthorization } from './lib/supabase';
 import { PasswordAuthModal } from './components/PasswordAuthModal';
 
-function MainWorkspace({ onSignOut }: { onSignOut: () => void }) {
+function MainWorkspace({ onSignOut, startInPersonaSetup = false }: { onSignOut: () => void; startInPersonaSetup?: boolean }) {
   const { t } = useTranslation();
   const {
     currentUser,
@@ -55,11 +55,14 @@ function MainWorkspace({ onSignOut }: { onSignOut: () => void }) {
     upsertTimelineItem,
     deleteTimelineItem,
     addPlan,
+    updatePlanName,
     deletePlan,
     toggleVote,
     updateProfile,
+    removeCollaborator,
     clearLocalData,
-  } = useRealtimeSync();
+    profilesLoaded,
+  } = useRealtimeSync({ deferProfileRegistration: startInPersonaSetup });
 
   // Navigation and active selection
   const [activeView, setActiveView] = useState<'compare' | 'timeline'>('compare');
@@ -70,16 +73,23 @@ function MainWorkspace({ onSignOut }: { onSignOut: () => void }) {
   // Modal dialog states
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCreateTripOpen, setIsCreateTripOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(startInPersonaSetup);
+  const [isCompletingPersona, setIsCompletingPersona] = useState(startInPersonaSetup);
   const [isAddPlanOpen, setIsAddPlanOpen] = useState(false);
   const [isSqlSetupOpen, setIsSqlSetupOpen] = useState(false);
   const [isTripMetaOpen, setIsTripMetaOpen] = useState(false);
+  const [tripToEdit, setTripToEdit] = useState<Trip | null>(null);
 
   // Timeline Item Add / Edit Modal state
   const [isAddEditItemOpen, setIsAddEditItemOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<TimelineItem | null>(null);
   const [itemDefaultDate, setItemDefaultDate] = useState<string | undefined>(undefined);
   const [itemPlanTargetId, setItemPlanTargetId] = useState<string>(activePlanId);
+
+  const closeProfile = () => {
+    setIsProfileOpen(false);
+    setIsCompletingPersona(false);
+  };
 
   // Switch to timeline view focusing on a specific plan
   const handleSelectPlanForEdit = (planId: string) => {
@@ -138,6 +148,23 @@ function MainWorkspace({ onSignOut }: { onSignOut: () => void }) {
         );
     }
   };
+
+  if (isCompletingPersona) {
+    return (
+      <div className="min-h-screen bg-[#F3EFE8]">
+        <ProfileModal
+          isOpen={isProfileOpen}
+          onClose={closeProfile}
+          currentUser={currentUser}
+          onSave={updateProfile}
+          mode="select"
+          existingProfiles={teamMembers}
+          profilesLoaded={profilesLoaded}
+          onSelectProfile={updateProfile}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-stone-800 flex flex-col font-sans selection:bg-[#5B7065]/20 selection:text-stone-900 overflow-x-hidden">
@@ -214,6 +241,7 @@ function MainWorkspace({ onSignOut }: { onSignOut: () => void }) {
                 onSelectPlanForEdit={handleSelectPlanForEdit}
                 onOpenAddPlan={() => setIsAddPlanOpen(true)}
                 onDeletePlan={deletePlan}
+                onUpdatePlanName={updatePlanName}
                 currency={activeTrip?.currency || 'USD'}
               />
             ) : (
@@ -405,8 +433,9 @@ function MainWorkspace({ onSignOut }: { onSignOut: () => void }) {
           setIsSidebarOpen(false);
           setIsCreateTripOpen(true);
         }}
-        onOpenEditTripMeta={() => {
+        onOpenEditTripMeta={(trip) => {
           setIsSidebarOpen(false);
+          setTripToEdit(trip || activeTrip);
           setIsTripMetaOpen(true);
         }}
         onDeleteTrip={deleteTrip}
@@ -416,14 +445,7 @@ function MainWorkspace({ onSignOut }: { onSignOut: () => void }) {
           setIsProfileOpen(true);
         }}
         teamMembers={teamMembers}
-        onOpenNotes={() => {
-          setIsSidebarOpen(false);
-          setIsNotesExpanded(true);
-          setTimeout(() => {
-            document.getElementById('thoughts-notes-section')?.scrollIntoView({ behavior: 'smooth' });
-          }, 150);
-        }}
-        notesCount={notesCount}
+        onRemoveCollaborator={removeCollaborator}
         onSignOut={onSignOut}
       />
 
@@ -438,7 +460,7 @@ function MainWorkspace({ onSignOut }: { onSignOut: () => void }) {
 
       <ProfileModal
         isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
+        onClose={closeProfile}
         currentUser={currentUser}
         onSave={updateProfile}
       />
@@ -470,11 +492,14 @@ function MainWorkspace({ onSignOut }: { onSignOut: () => void }) {
         }}
       />
 
-      {activeTrip && (
+      {(tripToEdit || activeTrip) && (
         <TripMetaModal
           isOpen={isTripMetaOpen}
-          onClose={() => setIsTripMetaOpen(false)}
-          trip={activeTrip}
+          onClose={() => {
+            setIsTripMetaOpen(false);
+            setTripToEdit(null);
+          }}
+          trip={tripToEdit || activeTrip!}
           onSave={updateTrip}
         />
       )}
@@ -484,21 +509,24 @@ function MainWorkspace({ onSignOut }: { onSignOut: () => void }) {
 
 export default function App() {
   const [isAuthorized, setIsAuthorized] = useState<boolean>(() => isAccessAuthorized());
+  const [shouldSetUpPersona, setShouldSetUpPersona] = useState(false);
 
   const handleSignOut = () => {
     revokeAccessAuthorization();
     setIsAuthorized(false);
+    setShouldSetUpPersona(false);
   };
 
   if (!isAuthorized) {
     return (
       <PasswordAuthModal
         onUnlocked={() => {
+          setShouldSetUpPersona(true);
           setIsAuthorized(true);
         }}
       />
     );
   }
 
-  return <MainWorkspace onSignOut={handleSignOut} />;
+  return <MainWorkspace onSignOut={handleSignOut} startInPersonaSetup={shouldSetUpPersona} />;
 }

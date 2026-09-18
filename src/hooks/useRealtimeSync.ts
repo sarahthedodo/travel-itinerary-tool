@@ -30,7 +30,7 @@ interface RealtimeActionNotification {
   timestamp: number;
 }
 
-export function useRealtimeSync() {
+export function useRealtimeSync({ deferProfileRegistration = false }: { deferProfileRegistration?: boolean } = {}) {
   // 1. Current user state
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
     if (typeof window !== 'undefined') {
@@ -39,10 +39,13 @@ export function useRealtimeSync() {
         try { 
           const parsed = JSON.parse(saved); 
           if (parsed && typeof parsed === 'object') {
+            if (parsed.name === 'traveler' || parsed.name === 'traveler user') {
+              parsed.name = 'momo';
+            }
             if (!isValidUUID(parsed.id)) {
               parsed.id = generateUUID();
-              localStorage.setItem(LOCAL_STORAGE_KEY_USER, JSON.stringify(parsed));
             }
+            localStorage.setItem(LOCAL_STORAGE_KEY_USER, JSON.stringify(parsed));
             return parsed;
           }
         } catch (e) { console.warn(e); }
@@ -108,10 +111,24 @@ export function useRealtimeSync() {
   });
 
   // 6. Online team members
-  const [teamMembers, setTeamMembers] = useState<UserProfile[]>([currentUser]);
+  const [teamMembers, setTeamMembers] = useState<UserProfile[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY_TEAM);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+    }
+    return deferProfileRegistration ? [] : [currentUser];
+  });
 
   // 7. Sync status
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('demo');
+  const [profilesLoaded, setProfilesLoaded] = useState(false);
   const [recentNotification, setRecentNotification] = useState<RealtimeActionNotification | null>(null);
 
   // Cross-tab broadcast channel for local mode
@@ -232,6 +249,8 @@ export function useRealtimeSync() {
             }
             return [...prev, payload];
           });
+        } else if (type === 'PROFILE_DELETE') {
+          setTeamMembers((prev) => prev.filter((member) => member.id !== payload.id));
         }
       };
 
@@ -250,6 +269,7 @@ export function useRealtimeSync() {
 
     if (!config.isConfigured || !supabase) {
       setSyncStatus('demo');
+      setProfilesLoaded(true);
       return;
     }
 
@@ -259,6 +279,19 @@ export function useRealtimeSync() {
     async function fetchInitialData() {
       if (!supabase) return;
       try {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('updated_at', { ascending: false })
+          .limit(50);
+
+        if (profilesError) {
+          console.error('Failed to load profiles:', profilesError);
+        } else if (isMounted) {
+          setTeamMembers(profilesData || []);
+        }
+        if (isMounted) setProfilesLoaded(true);
+
         // 1. Fetch all trips
         const { data: tripsData, error: tripsError } = await supabase
           .from('trips')
@@ -313,17 +346,7 @@ export function useRealtimeSync() {
             setTimelineItems([]);
           }
 
-          // 4. Fetch profiles
-          const { data: profilesData } = await supabase
-            .from('profiles')
-            .select('*')
-            .limit(20);
-
-          if (isMounted && profilesData && profilesData.length > 0) {
-            setTeamMembers(profilesData);
-          }
-
-          // 5. Fetch user votes
+          // 4. Fetch user votes
           const { data: votesData } = await supabase
             .from('plan_votes')
             .select('plan_id')
@@ -339,20 +362,24 @@ export function useRealtimeSync() {
         }
       } catch (err) {
         console.error('Error fetching Supabase data:', err);
-        if (isMounted) setSyncStatus('error');
+        if (isMounted) {
+          setProfilesLoaded(true);
+          setSyncStatus('error');
+        }
       }
     }
 
     fetchInitialData();
 
-    // Register user profile
-    supabase.from('profiles').upsert({
-      id: currentUser.id,
-      name: currentUser.name,
-      avatar_url: currentUser.avatar_url,
-      color: currentUser.color,
-      updated_at: new Date().toISOString(),
-    }).then();
+    if (!deferProfileRegistration) {
+      supabase.from('profiles').upsert({
+        id: currentUser.id,
+        name: currentUser.name,
+        avatar_url: currentUser.avatar_url,
+        color: currentUser.color,
+        updated_at: new Date().toISOString(),
+      }).then();
+    }
 
     // Realtime channel
     const channel = supabase.channel('tripsync_global_realtime');
@@ -445,8 +472,12 @@ export function useRealtimeSync() {
       { event: '*', schema: 'public', table: 'profiles' },
       (payload) => {
         if (!isMounted) return;
+        const eventType = payload.eventType;
         const profile = payload.new as UserProfile;
-        if (profile && profile.id) {
+        const oldProfile = payload.old as { id?: string };
+        if (eventType === 'DELETE' && oldProfile?.id) {
+          setTeamMembers((prev) => prev.filter((member) => member.id !== oldProfile.id));
+        } else if (profile && profile.id) {
           setTeamMembers((prev) => {
             const idx = prev.findIndex((m) => m.id === profile.id);
             if (idx >= 0) {
@@ -472,7 +503,7 @@ export function useRealtimeSync() {
       isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, [activeTripId, currentUser.id, triggerNotification]);
+  }, [activeTripId, currentUser.id, deferProfileRegistration, triggerNotification]);
 
   // When activeTripId changes, fetch plans & items for the newly selected trip
   const switchTrip = useCallback(async (tripId: string) => {
@@ -712,6 +743,39 @@ export function useRealtimeSync() {
     return newPlan;
   }, [currentUser.id, activeTrip]);
 
+  // MUTATION: Rename Plan
+  const updatePlanName = useCallback(async (planId: string, planName: string) => {
+    const trimmedName = planName.trim();
+    if (!trimmedName) return;
+
+    const plan = plans.find((candidate) => candidate.id === planId);
+    if (!plan || plan.plan_name === trimmedName) return;
+
+    const updatedPlan = { ...plan, plan_name: trimmedName };
+    setPlans((prev) => prev.map((candidate) => candidate.id === planId ? updatedPlan : candidate));
+
+    if (broadcastChannelRef.current) {
+      broadcastChannelRef.current.postMessage({
+        type: 'PLAN_UPSERT',
+        payload: updatedPlan,
+        sender: currentUser.id,
+      });
+    }
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from('plans')
+          .update({ plan_name: trimmedName })
+          .eq('id', ensureUUID(planId));
+        if (error) console.error('Supabase plan rename error:', error);
+      } catch (err) {
+        console.error('Failed to rename plan in Supabase:', err);
+      }
+    }
+  }, [plans, currentUser.id]);
+
   // MUTATION: Delete Plan
   const deletePlan = useCallback(async (planId: string) => {
     const supabase = getSupabase();
@@ -824,6 +888,31 @@ export function useRealtimeSync() {
     }
   }, []);
 
+  // MUTATION: Remove a collaborator profile from the shared roster
+  const removeCollaborator = useCallback(async (userId: string) => {
+    if (userId === currentUser.id) return;
+
+    setTeamMembers((prev) => prev.filter((member) => member.id !== userId));
+
+    if (broadcastChannelRef.current) {
+      broadcastChannelRef.current.postMessage({
+        type: 'PROFILE_DELETE',
+        payload: { id: userId },
+        sender: currentUser.id,
+      });
+    }
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { error } = await supabase.from('profiles').delete().eq('id', ensureUUID(userId));
+        if (error) console.error('Supabase collaborator removal error:', error);
+      } catch (err) {
+        console.error('Failed to remove collaborator from Supabase:', err);
+      }
+    }
+  }, [currentUser.id]);
+
   // Clear local storage data
   const clearLocalData = useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -848,6 +937,7 @@ export function useRealtimeSync() {
     plans,
     timelineItems,
     teamMembers,
+    profilesLoaded,
     userVotes,
     syncStatus,
     recentNotification,
@@ -858,9 +948,11 @@ export function useRealtimeSync() {
     upsertTimelineItem,
     deleteTimelineItem,
     addPlan,
+    updatePlanName,
     deletePlan,
     toggleVote,
     updateProfile,
+    removeCollaborator,
     clearLocalData,
   };
 }

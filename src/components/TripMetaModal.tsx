@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Trip } from '../types';
 import { X, Globe, DollarSign, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +35,14 @@ export const TripMetaModal: React.FC<TripMetaModalProps> = ({
   const [title, setTitle] = useState(trip.title);
   const [destination, setDestination] = useState(trip.destination || '');
   const [currency, setCurrency] = useState(trip.currency || 'USD');
+
+  useEffect(() => {
+    if (isOpen) {
+      setTitle(trip.title);
+      setDestination(trip.destination || '');
+      setCurrency(trip.currency || 'USD');
+    }
+  }, [isOpen, trip]);
 
   if (!isOpen) return null;
 

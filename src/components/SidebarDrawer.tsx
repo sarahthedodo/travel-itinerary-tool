@@ -3,24 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Trip, UserProfile } from '../types';
 import { 
   X, 
   Compass, 
   Plus, 
   Check, 
-  Copy, 
-  Settings2, 
   Trash2, 
   Users, 
   Edit,
   MapPin,
-  Calendar,
-  Sparkles,
-  StickyNote,
   ShieldCheck,
-  LogOut
+  LogOut,
+  UserMinus
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -31,13 +27,12 @@ interface SidebarDrawerProps {
   activeTrip: Trip | null;
   onSelectTrip: (tripId: string) => void;
   onOpenCreateTrip: () => void;
-  onOpenEditTripMeta: () => void;
+  onOpenEditTripMeta: (trip?: Trip) => void;
   onDeleteTrip: (tripId: string) => void;
   currentUser: UserProfile;
   onOpenProfile: () => void;
   teamMembers: UserProfile[];
-  onOpenNotes?: () => void;
-  notesCount?: number;
+  onRemoveCollaborator: (userId: string) => void;
   onSignOut?: () => void;
 }
 
@@ -53,24 +48,12 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
   currentUser,
   onOpenProfile,
   teamMembers,
-  onOpenNotes,
-  notesCount,
+  onRemoveCollaborator,
   onSignOut,
 }) => {
   const { t } = useTranslation();
-  const [copiedInvite, setCopiedInvite] = useState(false);
 
   if (!isOpen) return null;
-
-  const handleCopyInvite = () => {
-    if (!activeTrip) return;
-    const inviteUrl = typeof window !== 'undefined' 
-      ? `${window.location.origin}?invite=${activeTrip.invite_code}` 
-      : activeTrip.invite_code;
-    navigator.clipboard.writeText(inviteUrl);
-    setCopiedInvite(true);
-    setTimeout(() => setCopiedInvite(false), 2000);
-  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
@@ -229,6 +212,16 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
 
                         {/* Action buttons */}
                         <div className="flex items-center space-x-1 shrink-0">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenEditTripMeta(tr);
+                            }}
+                            className="p-2 text-stone-400 hover:text-[#5B7065] hover:bg-[#5B7065]/10 rounded-lg transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center opacity-70 group-hover:opacity-100"
+                            title={t('sidebar.editTrip')}
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
                           {trips.length > 1 && (
                             <button
                               onClick={(e) => {
@@ -251,117 +244,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
               )}
             </div>
 
-            {/* 3. Washi Thoughts & Notes Corner */}
-            {activeTrip && onOpenNotes && (
-              <div className="space-y-3 pt-4 border-t border-stone-200/70">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-1.5">
-                    <StickyNote className="w-3.5 h-3.5 text-[#5B7065]" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-stone-700">
-                      {t('stickyNotes.cornerTitle')}
-                    </span>
-                  </div>
-                  {notesCount !== undefined && (
-                    <span className="text-[11px] font-medium text-[#5B7065] bg-[#5B7065]/10 px-2 py-0.5 rounded-full">
-                      {notesCount}
-                    </span>
-                  )}
-                </div>
-
-                <div className="bg-white rounded-2xl p-3.5 border border-stone-200/80 shadow-wabi space-y-2.5">
-                  <p className="text-xs text-stone-600 leading-relaxed">
-                    {t('stickyNotes.cornerDesc')}
-                  </p>
-                  <button
-                    id="drawer-open-notes-btn"
-                    onClick={onOpenNotes}
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl bg-[#FAF8F5] hover:bg-stone-100 border border-stone-200/90 text-xs font-medium text-stone-800 flex items-center justify-center space-x-1.5 transition-colors cursor-pointer shadow-2xs"
-                  >
-                    <StickyNote className="w-3.5 h-3.5 text-[#5B7065]" />
-                    <span>{t('stickyNotes.title')}</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* 4. Travel Theme Settings (Active Trip) */}
-            {activeTrip && (
-              <div className="space-y-3 pt-4 border-t border-stone-200/70">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-stone-700">
-                    {t('sidebar.tripThemeSettings')}
-                  </span>
-                  <button
-                    onClick={onOpenEditTripMeta}
-                    className="text-xs font-medium text-[#5B7065] hover:text-[#4D5F56] flex items-center space-x-1 min-h-[36px] px-2 rounded-lg hover:bg-stone-100 transition-colors cursor-pointer"
-                  >
-                    <Settings2 className="w-3.5 h-3.5" />
-                    <span>{t('sidebar.editTheme')}</span>
-                  </button>
-                </div>
-
-                <div className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-wabi space-y-3">
-                  <div>
-                    <span className="text-[10px] uppercase font-semibold text-stone-400 block tracking-wider">
-                      {t('modals.tripMeta.name')}
-                    </span>
-                    <span className="text-xs sm:text-sm font-semibold text-stone-800 block mt-0.5">
-                      {activeTrip.title}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <span className="text-[10px] uppercase font-semibold text-stone-400 block tracking-wider">
-                        {t('modals.tripMeta.destination')}
-                      </span>
-                      <span className="font-medium text-stone-700 block mt-0.5 truncate">
-                        {activeTrip.destination || 'Not specified'}
-                      </span>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] uppercase font-semibold text-stone-400 block tracking-wider">
-                        {t('modals.tripMeta.currency')}
-                      </span>
-                      <span className="font-medium text-stone-700 block mt-0.5">
-                        {activeTrip.currency}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Invite Code */}
-                  <div className="pt-2 border-t border-stone-100">
-                    <span className="text-[10px] uppercase font-semibold text-stone-400 block tracking-wider mb-1.5">
-                      {t('common.invite')}
-                    </span>
-                    <div className="flex items-center justify-between bg-[#FAF8F5] px-3 py-2 rounded-xl border border-stone-200/80">
-                      <span className="font-mono text-xs font-semibold text-stone-800 select-all">
-                        {activeTrip.invite_code}
-                      </span>
-                      <button
-                        onClick={handleCopyInvite}
-                        className="text-xs text-[#5B7065] hover:text-[#4D5F56] font-medium flex items-center space-x-1 cursor-pointer min-h-[32px] px-2 rounded hover:bg-stone-100 transition-colors"
-                      >
-                        {copiedInvite ? (
-                          <>
-                            <Check className="w-3 h-3 text-[#5B7065]" />
-                            <span className="text-[#5B7065]">{t('common.copied')}</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            <span>{t('sidebar.copyLink')}</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 4. Active Collaborators in Room */}
+            {/* 3. Active Collaborators in Room */}
             <div className="space-y-3 pt-4 border-t border-stone-200/70">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wider text-stone-700 flex items-center space-x-1.5">
@@ -375,9 +258,9 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
 
               <div className="space-y-2">
                 {teamMembers.map((m) => (
-                  <div 
+                  <div
                     key={m.id} 
-                    className="flex items-center space-x-2.5 p-2 rounded-xl bg-white border border-stone-200/70 text-xs"
+                    className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-stone-200/70 text-xs"
                   >
                     <span className="text-base">{m.avatar_url || '👤'}</span>
                     <div className="min-w-0 flex-1">
@@ -388,12 +271,26 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                         {m.last_active || t('common.online')}
                       </span>
                     </div>
+                    {m.id !== currentUser.id && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(t('sidebar.removeCollaboratorConfirm', { name: m.name }))) {
+                            onRemoveCollaborator(m.id);
+                          }
+                        }}
+                        className="min-h-[36px] min-w-[36px] rounded-lg text-stone-400 hover:text-[#A25A60] hover:bg-[#F5ECEB] flex items-center justify-center transition-colors cursor-pointer"
+                        title={t('sidebar.removeCollaborator')}
+                      >
+                        <UserMinus className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* 5. Access Security & Sign Out */}
+            {/* 4. Access Security & Sign Out */}
             {onSignOut && (
               <div className="space-y-3 pt-4 border-t border-stone-200/70">
                 <div className="flex items-center justify-between">

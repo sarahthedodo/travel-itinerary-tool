@@ -66,6 +66,9 @@
     "title": "旅行协作中心",
     "subtitle": "我的旅行列表与协同设置",
     "editProfile": "修改资料",
+    "editTrip": "编辑行程名称与设置",
+    "removeCollaborator": "移除协作成员",
+    "removeCollaboratorConfirm": "确定从协作者列表中移除 {{name}} 吗？如果对方仍持有访问密码，可以再次进入。",
     "myTrips": "我的旅行行程",
     "newTrip": "+ 新建旅行",
     "noTripsYet": "暂无旅行行程",
@@ -106,7 +109,8 @@
     "draftTitle": "起草新的备选方案",
     "draftDesc": "创建新的方案分支（例如 Plan D），尝试不同的出发日期、更优酒店组合或城市穿梭方案。",
     "newBranch": "+ 新增备选分支",
-    "mobilePlanSelector": "选择查看方案"
+    "mobilePlanSelector": "选择查看方案",
+    "editPlanName": "编辑备选方案标题"
   },
   "timeline": {
     "addNode": "添加行程节点",
@@ -130,6 +134,15 @@
     "food": "美食餐饮",
     "activity": "体验与游玩",
     "other": "杂费与其他"
+  },
+  "categoryDescriptions": {
+    "flight": "航班、机票与长途交通",
+    "hotel": "住宿、入住与退房安排",
+    "spot": "景点、展馆与门票预订",
+    "transport": "地铁、巴士、租车与接送",
+    "food": "餐厅、咖啡与当地风味",
+    "activity": "体验、演出与户外活动",
+    "other": "购物、保险与其他费用"
   },
   "footer": {
     "supabaseStatus": "Supabase 实时云数据库",
@@ -161,7 +174,15 @@
       "customAvatar": "或填入自定义图片 URL（可选）",
       "colorTag": "身份识别色",
       "saveBtn": "保存资料",
-      "previewTip": "协同同伴将看到由你留痕标注的项目"
+      "previewTip": "协同同伴将看到由你留痕标注的项目",
+      "selectTitle": "这次以哪个身份同行？",
+      "selectSubtitle": "选择已保存的 Persona，或在此设备创建新身份",
+      "loadingProfiles": "正在加载已保存的 Persona...",
+      "usePersona": "使用此 Persona 继续",
+      "noProfiles": "暂未找到已保存的 Persona",
+      "noProfilesDesc": "创建第一个 Persona，用于标记你的协作操作。",
+      "createPersona": "创建新的 Persona",
+      "backToProfiles": "返回已保存的 Persona"
     },
     "addEdit": {
       "addTitle": "添加行程节点",

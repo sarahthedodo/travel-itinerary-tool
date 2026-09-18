@@ -103,7 +103,7 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-900/40 backdrop-blur-xs animate-in fade-in duration-200">
       <div 
         id="add-edit-item-modal"
-        className="w-full sm:max-w-lg bg-[#FAF8F5] rounded-t-3xl sm:rounded-2xl shadow-2xl border border-stone-200/90 overflow-hidden flex flex-col max-h-[90vh] font-sans"
+        className="w-full sm:max-w-3xl bg-[#FAF8F5] rounded-t-3xl sm:rounded-2xl shadow-2xl border border-stone-200/90 overflow-hidden flex flex-col max-h-[90vh] font-sans"
       >
         <div className="sm:hidden w-12 h-1.5 bg-stone-300 rounded-full mx-auto mt-3 mb-1" />
 
@@ -130,7 +130,7 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({
             <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-2">
               {t('modals.addEdit.categoryType')}
             </label>
-            <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {CATEGORIES.map((cat) => {
                 const meta = CATEGORY_METADATA[cat];
                 const isSelected = type === cat;
@@ -139,15 +139,18 @@ export const AddEditItemModal: React.FC<AddEditItemModalProps> = ({
                     key={cat}
                     type="button"
                     onClick={() => setType(cat)}
-                    className={`min-h-[44px] p-2 rounded-xl flex flex-col items-center justify-center text-center transition-all cursor-pointer border ${
+                    className={`min-h-[132px] p-4 rounded-xl flex flex-col items-center justify-center text-center transition-all cursor-pointer border ${
                       isSelected
                         ? 'bg-stone-800 text-white border-stone-800 shadow-xs ring-2 ring-stone-400/30'
                         : 'bg-white hover:bg-stone-100 text-stone-700 border-stone-200/80'
                     }`}
                   >
-                    <span className="text-lg">{meta.emoji}</span>
-                    <span className="text-[10px] font-medium mt-1 truncate max-w-full">
+                    <span className="text-4xl leading-none" aria-hidden="true">{meta.emoji}</span>
+                    <span className="text-base font-semibold mt-3 leading-snug">
                       {t(`categories.${cat}`, { defaultValue: meta.label.split('&')[0].trim() })}
+                    </span>
+                    <span className={`text-sm mt-1 leading-snug ${isSelected ? 'text-stone-200' : 'text-stone-600'}`}>
+                      {t(`categoryDescriptions.${cat}`)}
                     </span>
                   </button>
                 );

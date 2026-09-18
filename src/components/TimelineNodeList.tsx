@@ -56,15 +56,15 @@ export const TimelineNodeList: React.FC<TimelineNodeListProps> = ({
   const activePlan = plans.find((p) => p.id === activePlanId) || plans[0];
   if (!activePlan) {
     return (
-      <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-8 sm:p-12 text-center space-y-4 max-w-xl mx-auto shadow-xs my-8">
-        <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+      <div className="bg-white/90 rounded-2xl border-2 border-dashed border-stone-300 p-8 sm:p-12 text-center space-y-4 max-w-xl mx-auto shadow-wabi my-8">
+        <div className="w-14 h-14 rounded-2xl bg-[#5B7065]/10 text-[#5B7065] border border-[#5B7065]/20 flex items-center justify-center mx-auto">
           <Calendar className="w-7 h-7" />
         </div>
         <div>
-          <h4 className="font-bold text-slate-900 text-base sm:text-lg">
+          <h4 className="font-semibold text-stone-800 text-base sm:text-lg">
             {t('timeline.noActivePlanTitle')}
           </h4>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto mt-1 leading-relaxed">
+          <p className="text-xs sm:text-sm text-stone-500 max-w-sm mx-auto mt-1 leading-relaxed">
             {t('timeline.noActivePlanDesc')}
           </p>
         </div>
@@ -73,7 +73,7 @@ export const TimelineNodeList: React.FC<TimelineNodeListProps> = ({
             <button
               id="timeline-empty-add-plan-btn"
               onClick={onOpenAddPlan}
-              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer inline-flex items-center space-x-2"
+              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-[#5B7065] hover:bg-[#4D5F56] text-white text-xs sm:text-sm font-medium shadow-xs transition-colors cursor-pointer inline-flex items-center space-x-2"
             >
               <Plus className="w-4 h-4" />
               <span>{t('comparer.addPlanBtn')}</span>

@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { UserProfile } from '../types';
-import { X, UserCheck, Sparkles, Check } from 'lucide-react';
+import { X, UserCheck, Sparkles, Check, Plus, ArrowLeft, LoaderCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface ProfileModalProps {
@@ -13,6 +13,10 @@ interface ProfileModalProps {
   onClose: () => void;
   currentUser: UserProfile;
   onSave: (updatedProfile: UserProfile) => void;
+  mode?: 'edit' | 'select';
+  existingProfiles?: UserProfile[];
+  profilesLoaded?: boolean;
+  onSelectProfile?: (profile: UserProfile) => void;
 }
 
 const PRESET_AVATARS = ['✈️', '🎒', '🧳', '🗺️', '📸', '🏖️', '⛰️', '🍵', '🍣', '🌸', '🏮', '♨️'];
@@ -31,12 +35,26 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onClose,
   currentUser,
   onSave,
+  mode = 'edit',
+  existingProfiles = [],
+  profilesLoaded = true,
+  onSelectProfile,
 }) => {
   const { t } = useTranslation();
   const [name, setName] = useState(currentUser.name);
   const [avatar, setAvatar] = useState(currentUser.avatar_url);
   const [color, setColor] = useState(currentUser.color);
   const [customAvatarInput, setCustomAvatarInput] = useState('');
+  const [isCreatingProfile, setIsCreatingProfile] = useState(mode === 'edit');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setName(currentUser.name);
+    setAvatar(currentUser.avatar_url);
+    setColor(currentUser.color);
+    setCustomAvatarInput('');
+    setIsCreatingProfile(mode === 'edit');
+  }, [currentUser, isOpen, mode]);
 
   if (!isOpen) return null;
 
@@ -53,6 +71,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     onClose();
   };
 
+  const showProfileForm = mode === 'edit' || isCreatingProfile;
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-900/40 backdrop-blur-xs animate-in fade-in duration-200">
       <div 
@@ -68,20 +88,89 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <UserCheck className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-stone-800 text-base tracking-wide">{t('modals.profile.title')}</h3>
-              <p className="text-xs text-stone-500">{t('modals.profile.subtitle')}</p>
+              <h3 className="font-semibold text-stone-800 text-base tracking-wide">
+                {mode === 'select' ? t('modals.profile.selectTitle') : t('modals.profile.title')}
+              </h3>
+              <p className="text-xs text-stone-500">
+                {mode === 'select' ? t('modals.profile.selectSubtitle') : t('modals.profile.subtitle')}
+              </p>
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          {mode === 'edit' && (
+            <button
+              onClick={onClose}
+              className="p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Modal Body */}
+        {!showProfileForm ? (
+          <div className="p-6 space-y-5 overflow-y-auto">
+            {!profilesLoaded ? (
+              <div className="py-10 flex flex-col items-center text-center text-stone-500">
+                <LoaderCircle className="w-7 h-7 text-[#5B7065] animate-spin mb-3" />
+                <p className="text-sm font-medium text-stone-700">{t('modals.profile.loadingProfiles')}</p>
+              </div>
+            ) : (
+              <>
+                {existingProfiles.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {existingProfiles.map((profile) => (
+                      <button
+                        key={profile.id}
+                        type="button"
+                        onClick={() => {
+                          onSelectProfile?.(profile);
+                          onClose();
+                        }}
+                        className="min-h-[76px] p-3 rounded-xl bg-white hover:bg-[#F2F6F3] border border-stone-200 hover:border-[#5B7065]/50 flex items-center gap-3 text-left transition-colors cursor-pointer"
+                      >
+                        <span
+                          className="w-11 h-11 rounded-xl border flex items-center justify-center text-xl shrink-0"
+                          style={{ backgroundColor: `${profile.color}18`, borderColor: profile.color }}
+                        >
+                          {profile.avatar_url || '👤'}
+                        </span>
+                        <span className="min-w-0">
+                          <strong className="block text-sm font-semibold text-stone-800 truncate">{profile.name}</strong>
+                          <span className="block text-[11px] text-stone-400 mt-0.5">{t('modals.profile.usePersona')}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-6 text-center">
+                    <p className="text-sm font-medium text-stone-700">{t('modals.profile.noProfiles')}</p>
+                    <p className="text-xs text-stone-500 mt-1">{t('modals.profile.noProfilesDesc')}</p>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingProfile(true)}
+                  className="w-full min-h-[48px] px-4 py-2.5 rounded-xl border border-dashed border-[#5B7065]/50 bg-[#5B7065]/5 hover:bg-[#5B7065]/10 text-[#4D5F56] text-sm font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{t('modals.profile.createPersona')}</span>
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
         <form onSubmit={handleSave} className="p-6 space-y-5 overflow-y-auto">
+          {mode === 'select' && (
+            <button
+              type="button"
+              onClick={() => setIsCreatingProfile(false)}
+              className="min-h-[40px] px-2 text-xs font-medium text-stone-600 hover:text-[#5B7065] flex items-center gap-1.5 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>{t('modals.profile.backToProfiles')}</span>
+            </button>
+          )}
           {/* Name Input */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
@@ -191,6 +280,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

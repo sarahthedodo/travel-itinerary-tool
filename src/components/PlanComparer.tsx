@@ -21,7 +21,9 @@ import {
   Layers,
   Trash2,
   Clock,
-  Check
+  Check,
+  Pencil,
+  X
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +36,7 @@ interface PlanComparerProps {
   onSelectPlanForEdit: (planId: string) => void;
   onOpenAddPlan: () => void;
   onDeletePlan: (planId: string) => void;
+  onUpdatePlanName: (planId: string, planName: string) => void;
   currency: string;
 }
 
@@ -45,11 +48,27 @@ export const PlanComparer: React.FC<PlanComparerProps> = ({
   onSelectPlanForEdit,
   onOpenAddPlan,
   onDeletePlan,
+  onUpdatePlanName,
   currency,
 }) => {
   const { t } = useTranslation();
   // Mobile active plan filter (or 'all')
   const [mobileActivePlanId, setMobileActivePlanId] = useState<string>(plans[0]?.id || '');
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [editingPlanName, setEditingPlanName] = useState('');
+
+  const startEditingPlanName = (plan: Plan) => {
+    setEditingPlanId(plan.id);
+    setEditingPlanName(plan.plan_name);
+  };
+
+  const savePlanName = (plan: Plan) => {
+    const nextName = editingPlanName.trim();
+    if (nextName && nextName !== plan.plan_name) {
+      onUpdatePlanName(plan.id, nextName);
+    }
+    setEditingPlanId(null);
+  };
 
   // Compute summaries for each plan
   const planSummaries: Record<string, PlanCostSummary> = {};
@@ -271,9 +290,62 @@ export const PlanComparer: React.FC<PlanComparerProps> = ({
                   </div>
                 </div>
 
-                <h3 className="font-semibold text-stone-800 text-base sm:text-lg leading-snug">
-                  {plan.plan_name}
-                </h3>
+                {editingPlanId === plan.id ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      value={editingPlanName}
+                      onChange={(event) => setEditingPlanName(event.target.value)}
+                      onBlur={() => savePlanName(plan)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          savePlanName(plan);
+                        }
+                        if (event.key === 'Escape') {
+                          setEditingPlanId(null);
+                        }
+                      }}
+                      className="min-h-[42px] min-w-0 flex-1 rounded-xl border border-[#5B7065]/50 bg-white px-3 py-2 text-base font-semibold text-stone-800 outline-hidden ring-2 ring-[#5B7065]/15"
+                      aria-label={t('comparer.editPlanName')}
+                    />
+                    <button
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => savePlanName(plan)}
+                      className="min-h-[42px] min-w-[42px] rounded-xl bg-[#5B7065] text-white flex items-center justify-center"
+                      title={t('common.save')}
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => setEditingPlanId(null)}
+                      className="min-h-[42px] min-w-[42px] rounded-xl border border-stone-200 bg-white text-stone-500 flex items-center justify-center"
+                      title={t('common.cancel')}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2">
+                    <h3
+                      className="font-semibold text-stone-800 text-base sm:text-lg leading-snug flex-1 cursor-text"
+                      onDoubleClick={() => startEditingPlanName(plan)}
+                    >
+                      {plan.plan_name}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => startEditingPlanName(plan)}
+                      className="min-h-[36px] min-w-[36px] rounded-lg text-stone-400 hover:text-[#5B7065] hover:bg-[#5B7065]/10 flex items-center justify-center transition-colors"
+                      title={t('comparer.editPlanName')}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
                 {plan.description && (
                   <p className="text-xs text-stone-500 mt-1.5 line-clamp-2 leading-relaxed">
                     {plan.description}

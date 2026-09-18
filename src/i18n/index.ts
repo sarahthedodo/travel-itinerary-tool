@@ -16,12 +16,8 @@ function getInitialLanguage(): string {
     if (saved === 'zh' || saved === 'en') {
       return saved;
     }
-    const browserLang = navigator.language || '';
-    if (browserLang.toLowerCase().startsWith('zh')) {
-      return 'zh';
-    }
   }
-  return 'en';
+  return 'zh';
 }
 
 i18n.use(initReactI18next).init({

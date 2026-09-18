@@ -66,6 +66,9 @@
     "title": "Travel Workspace",
     "subtitle": "My Trips & Collaboration Settings",
     "editProfile": "Edit Profile",
+    "editTrip": "Edit trip name and settings",
+    "removeCollaborator": "Remove collaborator",
+    "removeCollaboratorConfirm": "Remove {{name}} from the collaborator list? They can rejoin if they still have the access password.",
     "myTrips": "My Travel Trips",
     "newTrip": "+ New Trip",
     "noTripsYet": "No Trips Yet",
@@ -106,7 +109,8 @@
     "draftTitle": "Draft Another Plan",
     "draftDesc": "Create an alternative plan to test different flight dates, hotels, or routing.",
     "newBranch": "+ New Itinerary Branch",
-    "mobilePlanSelector": "Select Plan to View"
+    "mobilePlanSelector": "Select Plan to View",
+    "editPlanName": "Edit alternative option title"
   },
   "timeline": {
     "addNode": "Add Itinerary Node",
@@ -130,6 +134,15 @@
     "food": "Dining & Food",
     "activity": "Activities & Tours",
     "other": "Miscellaneous"
+  },
+  "categoryDescriptions": {
+    "flight": "Flights, tickets, and long-distance travel",
+    "hotel": "Stays, check-in, and check-out plans",
+    "spot": "Sights, museums, and admission tickets",
+    "transport": "Metro, buses, rentals, and transfers",
+    "food": "Restaurants, cafes, and local flavors",
+    "activity": "Experiences, shows, and outdoor activities",
+    "other": "Shopping, insurance, and other costs"
   },
   "footer": {
     "supabaseStatus": "Supabase Realtime Cloud Database",
@@ -161,7 +174,15 @@
       "customAvatar": "Or custom image URL (optional)",
       "colorTag": "Identity Badge Color",
       "saveBtn": "Save Profile",
-      "previewTip": "Teammates will see items marked with your avatar and badge"
+      "previewTip": "Teammates will see items marked with your avatar and badge",
+      "selectTitle": "Who are you traveling as?",
+      "selectSubtitle": "Choose your existing persona on this device, or create a new one",
+      "loadingProfiles": "Loading saved personas...",
+      "usePersona": "Continue as this persona",
+      "noProfiles": "No saved personas found",
+      "noProfilesDesc": "Create your first persona to identify your changes.",
+      "createPersona": "Create a new persona",
+      "backToProfiles": "Back to saved personas"
     },
     "addEdit": {
       "addTitle": "Add Itinerary Node",
