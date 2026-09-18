@@ -12,57 +12,57 @@ export const CATEGORY_METADATA: Record<
   flight: {
     label: 'Flight & Airfare',
     iconName: 'Plane',
-    color: '#0284C7',
-    bgLight: 'bg-sky-50 border-sky-200',
-    textDark: 'text-sky-700',
+    color: '#3A4D5F', // 蓝染 Aizome Indigo
+    bgLight: 'bg-[#F0F4F8] border-[#D6DFE6]',
+    textDark: 'text-[#2F4050]',
     emoji: '✈️',
   },
   hotel: {
     label: 'Hotel & Stay',
     iconName: 'Building2',
-    color: '#D97706',
-    bgLight: 'bg-amber-50 border-amber-200',
-    textDark: 'text-amber-800',
+    color: '#8C7A6B', // 桧木 Hinoki / Warm Linen
+    bgLight: 'bg-[#F9F6F0] border-[#E8DFC8]',
+    textDark: 'text-[#6B5744]',
     emoji: '🏨',
   },
   spot: {
     label: 'Sightseeing & Tickets',
     iconName: 'Ticket',
-    color: '#7C3AED',
-    bgLight: 'bg-purple-50 border-purple-200',
-    textDark: 'text-purple-700',
+    color: '#5B7065', // 苔色 Koke / Moss Green
+    bgLight: 'bg-[#F2F6F3] border-[#DCE5DF]',
+    textDark: 'text-[#45574D]',
     emoji: '🎟️',
   },
   transport: {
     label: 'Local Transit',
     iconName: 'Train',
-    color: '#0D9488',
-    bgLight: 'bg-teal-50 border-teal-200',
-    textDark: 'text-teal-700',
+    color: '#606F7B', // 灰青 River Stone Slate
+    bgLight: 'bg-[#F4F5F7] border-[#DFE3E6]',
+    textDark: 'text-[#414D56]',
     emoji: '🚆',
   },
   food: {
     label: 'Food & Dining',
     iconName: 'UtensilsCrossed',
-    color: '#E11D48',
-    bgLight: 'bg-rose-50 border-rose-200',
-    textDark: 'text-rose-700',
+    color: '#A85A52', // 茜色 Akane / Muted Persimmon
+    bgLight: 'bg-[#FAF2F0] border-[#EED9D6]',
+    textDark: 'text-[#823F38]',
     emoji: '🍜',
   },
   activity: {
     label: 'Tours & Activities',
     iconName: 'Compass',
-    color: '#2563EB',
-    bgLight: 'bg-blue-50 border-blue-200',
-    textDark: 'text-blue-700',
+    color: '#6B607A', // 藤色 Fuji / Muted Iris
+    bgLight: 'bg-[#F5F2F7] border-[#DDD5E3]',
+    textDark: 'text-[#524860]',
     emoji: '⛵',
   },
   other: {
     label: 'Other & Sundries',
     iconName: 'MoreHorizontal',
-    color: '#64748B',
-    bgLight: 'bg-slate-50 border-slate-200',
-    textDark: 'text-slate-700',
+    color: '#78716C', // 浅麻 Warm Sand
+    bgLight: 'bg-[#F7F6F3] border-[#E7E5E4]',
+    textDark: 'text-[#57534E]',
     emoji: '📦',
   },
 };

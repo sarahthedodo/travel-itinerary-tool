@@ -4,37 +4,37 @@
  */
 
 import React, { useState } from 'react';
-import { Trip } from '../types';
-import { X, Globe, DollarSign, Sparkles } from 'lucide-react';
+import { X, Globe, DollarSign, PlusCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-interface TripMetaModalProps {
+interface CreateTripModalProps {
   isOpen: boolean;
   onClose: () => void;
-  trip: Trip;
-  onSave: (updatedTrip: Trip) => void;
+  onCreateTrip: (data: { title: string; destination: string; currency: string }) => void;
 }
 
-const CURRENCIES = [
+const POPULAR_CURRENCIES = [
   { code: 'USD', symbol: '$', label: 'US Dollar (USD)' },
-  { code: 'EUR', symbol: '€', label: 'Euro (EUR)' },
-  { code: 'GBP', symbol: '£', label: 'British Pound (GBP)' },
-  { code: 'JPY', symbol: '¥', label: 'Japanese Yen (JPY)' },
   { code: 'CNY', symbol: '¥', label: 'Chinese Yuan (CNY)' },
+  { code: 'EUR', symbol: '€', label: 'Euro (EUR)' },
+  { code: 'JPY', symbol: '¥', label: 'Japanese Yen (JPY)' },
+  { code: 'GBP', symbol: '£', label: 'British Pound (GBP)' },
   { code: 'CAD', symbol: 'C$', label: 'Canadian Dollar (CAD)' },
   { code: 'AUD', symbol: 'A$', label: 'Australian Dollar (AUD)' },
+  { code: 'HKD', symbol: 'HK$', label: 'Hong Kong Dollar (HKD)' },
+  { code: 'SGD', symbol: 'S$', label: 'Singapore Dollar (SGD)' },
+  { code: 'KRW', symbol: '₩', label: 'South Korean Won (KRW)' },
 ];
 
-export const TripMetaModal: React.FC<TripMetaModalProps> = ({
+export const CreateTripModal: React.FC<CreateTripModalProps> = ({
   isOpen,
   onClose,
-  trip,
-  onSave,
+  onCreateTrip,
 }) => {
   const { t } = useTranslation();
-  const [title, setTitle] = useState(trip.title);
-  const [destination, setDestination] = useState(trip.destination || '');
-  const [currency, setCurrency] = useState(trip.currency || 'USD');
+  const [title, setTitle] = useState('');
+  const [destination, setDestination] = useState('');
+  const [currency, setCurrency] = useState('USD');
 
   if (!isOpen) return null;
 
@@ -42,19 +42,21 @@ export const TripMetaModal: React.FC<TripMetaModalProps> = ({
     e.preventDefault();
     if (!title.trim()) return;
 
-    onSave({
-      ...trip,
+    onCreateTrip({
       title: title.trim(),
       destination: destination.trim(),
       currency,
     });
+    setTitle('');
+    setDestination('');
+    setCurrency('USD');
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-900/40 backdrop-blur-xs animate-in fade-in duration-200">
       <div 
-        id="trip-meta-modal"
+        id="create-trip-modal"
         className="w-full sm:max-w-md bg-[#FAF8F5] rounded-t-3xl sm:rounded-2xl shadow-2xl border border-stone-200/90 overflow-hidden flex flex-col max-h-[90vh] font-sans"
       >
         <div className="sm:hidden w-12 h-1.5 bg-stone-300 rounded-full mx-auto mt-3 mb-1" />
@@ -65,8 +67,8 @@ export const TripMetaModal: React.FC<TripMetaModalProps> = ({
               <Globe className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-stone-800 text-base tracking-wide">{t('modals.tripMeta.title')}</h3>
-              <p className="text-xs text-stone-500">{t('modals.tripMeta.subtitle')}</p>
+              <h3 className="font-semibold text-stone-800 text-base tracking-wide">{t('modals.createTrip.title')}</h3>
+              <p className="text-xs text-stone-500">{t('modals.createTrip.subtitle')}</p>
             </div>
           </div>
           <button 
@@ -80,34 +82,35 @@ export const TripMetaModal: React.FC<TripMetaModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
-              {t('modals.tripMeta.name')} <span className="text-red-500">*</span>
+              {t('modals.createTrip.name')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. 2026 Tokyo Autumn Journey"
+              placeholder={t('modals.createTrip.namePlaceholder')}
               className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200/90 bg-white text-stone-800 focus:outline-hidden focus:ring-2 focus:ring-[#5B7065]/30 focus:border-[#5B7065] text-sm min-h-[44px]"
+              autoFocus
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
-              {t('modals.tripMeta.destination')}
+              {t('modals.createTrip.destination')}
             </label>
             <input
               type="text"
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
-              placeholder="e.g. Tokyo & Kyoto, Japan"
+              placeholder={t('modals.createTrip.destPlaceholder')}
               className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200/90 bg-white text-stone-800 focus:outline-hidden focus:ring-2 focus:ring-[#5B7065]/30 focus:border-[#5B7065] text-sm min-h-[44px]"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1.5">
-              {t('modals.tripMeta.currency')}
+              {t('modals.createTrip.currency')}
             </label>
             <div className="relative">
               <DollarSign className="w-4 h-4 text-stone-400 absolute left-3 top-3.5 pointer-events-none" />
@@ -116,7 +119,7 @@ export const TripMetaModal: React.FC<TripMetaModalProps> = ({
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-200/90 bg-white text-stone-800 focus:outline-hidden focus:ring-2 focus:ring-[#5B7065]/30 focus:border-[#5B7065] text-sm min-h-[44px]"
               >
-                {CURRENCIES.map((c) => (
+                {POPULAR_CURRENCIES.map((c) => (
                   <option key={c.code} value={c.code}>
                     {c.label}
                   </option>
@@ -137,8 +140,8 @@ export const TripMetaModal: React.FC<TripMetaModalProps> = ({
               type="submit"
               className="min-h-[44px] px-5 py-2 text-xs sm:text-sm font-medium text-white bg-[#5B7065] hover:bg-[#4D5F56] rounded-xl shadow-xs transition-colors flex items-center space-x-1.5 cursor-pointer"
             >
-              <Sparkles className="w-4 h-4" />
-              <span>{t('modals.tripMeta.submit')}</span>
+              <PlusCircle className="w-4 h-4" />
+              <span>{t('modals.createTrip.submit')}</span>
             </button>
           </div>
         </form>

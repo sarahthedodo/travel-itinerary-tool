@@ -9,24 +9,18 @@ import {
   Plan, 
   TimelineItem, 
   UserProfile, 
-  SyncStatus,
-  TimelineItemType
+  SyncStatus
 } from '../types';
 import { getSupabase, getSavedConfig } from '../lib/supabase';
-import { 
-  INITIAL_USER, 
-  INITIAL_TEAM, 
-  INITIAL_TRIP, 
-  INITIAL_PLANS, 
-  INITIAL_TIMELINE_ITEMS 
-} from '../lib/sampleData';
+import { createDefaultUser } from '../lib/sampleData';
 
-const LOCAL_STORAGE_KEY_TRIP = 'tripsync_active_trip';
+const LOCAL_STORAGE_KEY_USER = 'tripsync_active_user';
+const LOCAL_STORAGE_KEY_TRIPS = 'tripsync_all_trips';
+const LOCAL_STORAGE_KEY_ACTIVE_TRIP_ID = 'tripsync_active_trip_id';
 const LOCAL_STORAGE_KEY_PLANS = 'tripsync_active_plans';
 const LOCAL_STORAGE_KEY_ITEMS = 'tripsync_active_items';
-const LOCAL_STORAGE_KEY_USER = 'tripsync_active_user';
-const LOCAL_STORAGE_KEY_TEAM = 'tripsync_active_team';
 const LOCAL_STORAGE_KEY_VOTES = 'tripsync_active_votes';
+const LOCAL_STORAGE_KEY_TEAM = 'tripsync_active_team';
 
 interface RealtimeActionNotification {
   id: string;
@@ -44,21 +38,33 @@ export function useRealtimeSync() {
         try { return JSON.parse(saved); } catch (e) { console.warn(e); }
       }
     }
-    return INITIAL_USER;
+    const def = createDefaultUser();
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LOCAL_STORAGE_KEY_USER, JSON.stringify(def));
+    }
+    return def;
   });
 
-  // 2. Active Trip
-  const [trip, setTrip] = useState<Trip>(() => {
+  // 2. Trips collection & active trip ID
+  const [trips, setTrips] = useState<Trip[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY_TRIP);
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY_TRIPS);
       if (saved) {
         try { return JSON.parse(saved); } catch (e) { console.warn(e); }
       }
     }
-    return INITIAL_TRIP;
+    return [];
   });
 
-  // 3. Plans
+  const [activeTripId, setActiveTripId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const savedId = localStorage.getItem(LOCAL_STORAGE_KEY_ACTIVE_TRIP_ID);
+      if (savedId) return savedId;
+    }
+    return null;
+  });
+
+  // 3. Plans for the active trip
   const [plans, setPlans] = useState<Plan[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY_PLANS);
@@ -66,10 +72,10 @@ export function useRealtimeSync() {
         try { return JSON.parse(saved); } catch (e) { console.warn(e); }
       }
     }
-    return INITIAL_PLANS;
+    return [];
   });
 
-  // 4. Timeline items
+  // 4. Timeline items for the active trip's plans
   const [timelineItems, setTimelineItems] = useState<TimelineItem[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY_ITEMS);
@@ -77,7 +83,7 @@ export function useRealtimeSync() {
         try { return JSON.parse(saved); } catch (e) { console.warn(e); }
       }
     }
-    return INITIAL_TIMELINE_ITEMS;
+    return [];
   });
 
   // 5. User votes (Map of plan_id -> voted boolean by current user)
@@ -88,44 +94,44 @@ export function useRealtimeSync() {
         try { return JSON.parse(saved); } catch (e) { console.warn(e); }
       }
     }
-    return { '11111111-1111-1111-1111-111111111111': true };
+    return {};
   });
 
   // 6. Online team members
-  const [teamMembers, setTeamMembers] = useState<UserProfile[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY_TEAM);
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.warn(e); }
-      }
-    }
-    return INITIAL_TEAM;
-  });
+  const [teamMembers, setTeamMembers] = useState<UserProfile[]>([currentUser]);
 
   // 7. Sync status
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('demo');
   const [recentNotification, setRecentNotification] = useState<RealtimeActionNotification | null>(null);
 
-  // Cross-tab broadcast channel for instant multi-tab sync in local/demo mode
+  // Cross-tab broadcast channel for local mode
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
 
-  // Save current user to localStorage
+  // Active Trip derived object
+  const activeTrip = trips.find((t) => t.id === activeTripId) || trips[0] || null;
+
+  // Persist current user to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(LOCAL_STORAGE_KEY_USER, JSON.stringify(currentUser));
     }
   }, [currentUser]);
 
-  // Persist local state for demo fallback
+  // Persist local state for offline demo fallback
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(LOCAL_STORAGE_KEY_TRIP, JSON.stringify(trip));
+      localStorage.setItem(LOCAL_STORAGE_KEY_TRIPS, JSON.stringify(trips));
+      if (activeTripId) {
+        localStorage.setItem(LOCAL_STORAGE_KEY_ACTIVE_TRIP_ID, activeTripId);
+      } else {
+        localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_TRIP_ID);
+      }
       localStorage.setItem(LOCAL_STORAGE_KEY_PLANS, JSON.stringify(plans));
       localStorage.setItem(LOCAL_STORAGE_KEY_ITEMS, JSON.stringify(timelineItems));
       localStorage.setItem(LOCAL_STORAGE_KEY_VOTES, JSON.stringify(userVotes));
       localStorage.setItem(LOCAL_STORAGE_KEY_TEAM, JSON.stringify(teamMembers));
     }
-  }, [trip, plans, timelineItems, userVotes, teamMembers]);
+  }, [trips, activeTripId, plans, timelineItems, userVotes, teamMembers]);
 
   // Notification auto-dismiss
   useEffect(() => {
@@ -137,7 +143,6 @@ export function useRealtimeSync() {
     }
   }, [recentNotification]);
 
-  // Notify helper
   const triggerNotification = useCallback((userName: string, actionText: string) => {
     setRecentNotification({
       id: Math.random().toString(36).substring(2),
@@ -157,7 +162,21 @@ export function useRealtimeSync() {
         const { type, payload, sender } = event.data || {};
         if (sender === currentUser.id) return; // ignore self
 
-        if (type === 'TIMELINE_ITEM_UPSERT') {
+        if (type === 'TRIP_UPSERT') {
+          setTrips((prev) => {
+            const idx = prev.findIndex((t) => t.id === payload.id);
+            if (idx >= 0) {
+              const clone = [...prev];
+              clone[idx] = payload;
+              return clone;
+            }
+            return [payload, ...prev];
+          });
+          triggerNotification('Collaborator', `updated trip "${payload.title}"`);
+        } else if (type === 'TRIP_DELETE') {
+          setTrips((prev) => prev.filter((t) => t.id !== payload.id));
+          triggerNotification('Collaborator', 'deleted a trip');
+        } else if (type === 'TIMELINE_ITEM_UPSERT') {
           setTimelineItems((prev) => {
             const index = prev.findIndex((i) => i.id === payload.id);
             if (index >= 0) {
@@ -189,7 +208,7 @@ export function useRealtimeSync() {
         } else if (type === 'PLAN_VOTE') {
           setPlans((prev) =>
             prev.map((p) =>
-              p.id === payload.planId ? { ...p, votes: p.votes + (payload.delta || 1) } : p
+              p.id === payload.planId ? { ...p, votes: Math.max(0, p.votes + (payload.delta || 1)) } : p
             )
           );
           triggerNotification('Team member', 'voted on a plan');
@@ -230,50 +249,82 @@ export function useRealtimeSync() {
     async function fetchInitialData() {
       if (!supabase) return;
       try {
-        // 1. Fetch current trip
-        const { data: tripData } = await supabase
+        // 1. Fetch all trips
+        const { data: tripsData, error: tripsError } = await supabase
           .from('trips')
           .select('*')
-          .eq('id', trip.id)
-          .single();
+          .order('created_at', { ascending: false });
 
-        if (isMounted && tripData) {
-          setTrip(tripData);
-        }
-
-        // 2. Fetch plans for this trip
-        const { data: plansData } = await supabase
-          .from('plans')
-          .select('*')
-          .eq('trip_id', trip.id)
-          .order('created_at', { ascending: true });
-
-        if (isMounted && plansData && plansData.length > 0) {
-          setPlans(plansData);
-        }
-
-        // 3. Fetch all timeline items for this trip's plans
-        const { data: itemsData } = await supabase
-          .from('timeline_items')
-          .select('*')
-          .order('date', { ascending: true })
-          .order('order_index', { ascending: true });
-
-        if (isMounted && itemsData && itemsData.length > 0) {
-          setTimelineItems(itemsData);
-        }
-
-        // 4. Fetch profiles
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('*')
-          .limit(20);
-
-        if (isMounted && profilesData && profilesData.length > 0) {
-          setTeamMembers(profilesData);
-        }
+        if (tripsError) throw tripsError;
 
         if (isMounted) {
+          if (tripsData && tripsData.length > 0) {
+            setTrips(tripsData);
+            
+            // Choose active trip ID
+            const targetTripId = activeTripId && tripsData.some(t => t.id === activeTripId)
+              ? activeTripId
+              : tripsData[0].id;
+            
+            setActiveTripId(targetTripId);
+
+            // 2. Fetch plans for active trip
+            const { data: plansData } = await supabase
+              .from('plans')
+              .select('*')
+              .eq('trip_id', targetTripId)
+              .order('created_at', { ascending: true });
+
+            if (isMounted && plansData) {
+              setPlans(plansData);
+
+              // 3. Fetch timeline items for this trip's plans
+              if (plansData.length > 0) {
+                const planIds = plansData.map(p => p.id);
+                const { data: itemsData } = await supabase
+                  .from('timeline_items')
+                  .select('*')
+                  .in('plan_id', planIds)
+                  .order('date', { ascending: true })
+                  .order('order_index', { ascending: true });
+
+                if (isMounted && itemsData) {
+                  setTimelineItems(itemsData);
+                }
+              } else {
+                setTimelineItems([]);
+              }
+            }
+          } else {
+            // No trips exist in database yet (clean empty state)
+            setTrips([]);
+            setActiveTripId(null);
+            setPlans([]);
+            setTimelineItems([]);
+          }
+
+          // 4. Fetch profiles
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('*')
+            .limit(20);
+
+          if (isMounted && profilesData && profilesData.length > 0) {
+            setTeamMembers(profilesData);
+          }
+
+          // 5. Fetch user votes
+          const { data: votesData } = await supabase
+            .from('plan_votes')
+            .select('plan_id')
+            .eq('user_id', currentUser.id);
+
+          if (isMounted && votesData) {
+            const voteMap: Record<string, boolean> = {};
+            votesData.forEach(v => { voteMap[v.plan_id] = true; });
+            setUserVotes(voteMap);
+          }
+
           setSyncStatus('connected');
         }
       } catch (err) {
@@ -284,7 +335,7 @@ export function useRealtimeSync() {
 
     fetchInitialData();
 
-    // Register profile presence
+    // Register user profile
     supabase.from('profiles').upsert({
       id: currentUser.id,
       name: currentUser.name,
@@ -293,11 +344,64 @@ export function useRealtimeSync() {
       updated_at: new Date().toISOString(),
     }).then();
 
-    // Setup Supabase Realtime Subscriptions
-    const channelName = `trip-room-${trip.id.substring(0, 8)}`;
-    const channel = supabase.channel(channelName);
+    // Realtime channel
+    const channel = supabase.channel('tripsync_global_realtime');
 
-    // 1. Listen to timeline_items changes
+    // 1. Listen to trips table
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'trips' },
+      (payload) => {
+        if (!isMounted) return;
+        const eventType = payload.eventType;
+        const newTrip = payload.new as Trip;
+        const oldTrip = payload.old as { id: string };
+
+        if (eventType === 'INSERT') {
+          setTrips((prev) => {
+            if (prev.some((t) => t.id === newTrip.id)) return prev;
+            return [newTrip, ...prev];
+          });
+          triggerNotification('Collaborator', `created trip "${newTrip.title}"`);
+        } else if (eventType === 'UPDATE') {
+          setTrips((prev) => prev.map((t) => (t.id === newTrip.id ? newTrip : t)));
+        } else if (eventType === 'DELETE') {
+          setTrips((prev) => prev.filter((t) => t.id !== oldTrip.id));
+          setActiveTripId((prevId) => (prevId === oldTrip.id ? null : prevId));
+        }
+      }
+    );
+
+    // 2. Listen to plans table
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'plans' },
+      (payload) => {
+        if (!isMounted) return;
+        const eventType = payload.eventType;
+        const newPlan = payload.new as Plan;
+        const oldPlan = payload.old as { id: string };
+
+        if (eventType === 'INSERT') {
+          setPlans((prev) => {
+            if (prev.some((p) => p.id === newPlan.id)) return prev;
+            if (newPlan.trip_id === activeTripId) {
+              return [...prev, newPlan];
+            }
+            return prev;
+          });
+          triggerNotification('Collaborator', `created plan "${newPlan.plan_name}"`);
+        } else if (eventType === 'UPDATE') {
+          setPlans((prev) => prev.map((p) => (p.id === newPlan.id ? newPlan : p)));
+        } else if (eventType === 'DELETE') {
+          setPlans((prev) => prev.filter((p) => p.id !== oldPlan.id));
+          setTimelineItems((prev) => prev.filter((i) => i.plan_id !== oldPlan.id));
+          triggerNotification('Collaborator', 'removed an itinerary plan');
+        }
+      }
+    );
+
+    // 3. Listen to timeline_items table
     channel.on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'timeline_items' },
@@ -325,48 +429,7 @@ export function useRealtimeSync() {
       }
     );
 
-    // 2. Listen to plans changes
-    channel.on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'plans' },
-      (payload) => {
-        if (!isMounted) return;
-        const eventType = payload.eventType;
-        const newPlan = payload.new as Plan;
-        const oldPlan = payload.old as { id: string };
-
-        if (eventType === 'INSERT') {
-          setPlans((prev) => {
-            if (prev.some((p) => p.id === newPlan.id)) return prev;
-            return [...prev, newPlan];
-          });
-          triggerNotification('Collaborator', `created plan "${newPlan.plan_name}"`);
-        } else if (eventType === 'UPDATE') {
-          setPlans((prev) =>
-            prev.map((p) => (p.id === newPlan.id ? newPlan : p))
-          );
-        } else if (eventType === 'DELETE') {
-          setPlans((prev) => prev.filter((p) => p.id !== oldPlan.id));
-          setTimelineItems((prev) => prev.filter((i) => i.plan_id !== oldPlan.id));
-          triggerNotification('Collaborator', 'removed an itinerary plan');
-        }
-      }
-    );
-
-    // 3. Listen to trips changes
-    channel.on(
-      'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'trips' },
-      (payload) => {
-        if (!isMounted) return;
-        const updatedTrip = payload.new as Trip;
-        if (updatedTrip.id === trip.id) {
-          setTrip(updatedTrip);
-        }
-      }
-    );
-
-    // 4. Listen to profiles changes
+    // 4. Listen to profiles table
     channel.on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'profiles' },
@@ -399,7 +462,132 @@ export function useRealtimeSync() {
       isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, [trip.id, currentUser, triggerNotification]);
+  }, [activeTripId, currentUser.id, triggerNotification]);
+
+  // When activeTripId changes, fetch plans & items for the newly selected trip
+  const switchTrip = useCallback(async (tripId: string) => {
+    setActiveTripId(tripId);
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { data: plansData } = await supabase
+          .from('plans')
+          .select('*')
+          .eq('trip_id', tripId)
+          .order('created_at', { ascending: true });
+
+        if (plansData) {
+          setPlans(plansData);
+
+          if (plansData.length > 0) {
+            const planIds = plansData.map((p) => p.id);
+            const { data: itemsData } = await supabase
+              .from('timeline_items')
+              .select('*')
+              .in('plan_id', planIds)
+              .order('date', { ascending: true })
+              .order('order_index', { ascending: true });
+
+            setTimelineItems(itemsData || []);
+          } else {
+            setTimelineItems([]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load trip plans:', err);
+      }
+    }
+  }, []);
+
+  // MUTATION: Create a New Trip
+  const createTrip = useCallback(async (data: { title: string; destination?: string; currency?: string }) => {
+    const supabase = getSupabase();
+    const tripId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `trip-${Date.now()}`;
+    const inviteCode = `TRIP-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
+
+    const newTrip: Trip = {
+      id: tripId,
+      title: data.title,
+      destination: data.destination || '',
+      currency: data.currency || 'USD',
+      invite_code: inviteCode,
+      created_at: new Date().toISOString(),
+    };
+
+    // Update state
+    setTrips((prev) => [newTrip, ...prev]);
+    setActiveTripId(tripId);
+    setPlans([]);
+    setTimelineItems([]);
+
+    if (broadcastChannelRef.current) {
+      broadcastChannelRef.current.postMessage({
+        type: 'TRIP_UPSERT',
+        payload: newTrip,
+        sender: currentUser.id,
+      });
+    }
+
+    if (supabase) {
+      try {
+        await supabase.from('trips').insert(newTrip);
+      } catch (err) {
+        console.error('Failed to insert trip to Supabase:', err);
+      }
+    }
+
+    return newTrip;
+  }, [currentUser.id]);
+
+  // MUTATION: Update Trip Meta
+  const updateTrip = useCallback(async (updatedTrip: Trip) => {
+    setTrips((prev) => prev.map((t) => (t.id === updatedTrip.id ? updatedTrip : t)));
+
+    if (broadcastChannelRef.current) {
+      broadcastChannelRef.current.postMessage({
+        type: 'TRIP_UPSERT',
+        payload: updatedTrip,
+        sender: currentUser.id,
+      });
+    }
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        await supabase.from('trips').upsert(updatedTrip);
+      } catch (e) {
+        console.error('Failed to update trip in Supabase:', e);
+      }
+    }
+  }, [currentUser.id]);
+
+  // MUTATION: Delete Trip
+  const deleteTrip = useCallback(async (tripId: string) => {
+    setTrips((prev) => {
+      const filtered = prev.filter((t) => t.id !== tripId);
+      if (activeTripId === tripId) {
+        setActiveTripId(filtered[0]?.id || null);
+      }
+      return filtered;
+    });
+
+    if (broadcastChannelRef.current) {
+      broadcastChannelRef.current.postMessage({
+        type: 'TRIP_DELETE',
+        payload: { id: tripId },
+        sender: currentUser.id,
+      });
+    }
+
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        await supabase.from('trips').delete().eq('id', tripId);
+      } catch (e) {
+        console.error('Failed to delete trip from Supabase:', e);
+      }
+    }
+  }, [activeTripId, currentUser.id]);
 
   // MUTATION: Add or Edit Timeline Item
   const upsertTimelineItem = useCallback(async (itemData: Omit<TimelineItem, 'id'> & { id?: string }) => {
@@ -409,7 +597,7 @@ export function useRealtimeSync() {
     const fullItem: TimelineItem = {
       ...itemData,
       id: itemId,
-      currency: itemData.currency || trip.currency,
+      currency: itemData.currency || activeTrip?.currency || 'USD',
       added_by: itemData.added_by || currentUser.id,
       added_by_name: itemData.added_by_name || currentUser.name,
       created_at: itemData.created_at || new Date().toISOString(),
@@ -426,7 +614,6 @@ export function useRealtimeSync() {
       return [...prev, fullItem];
     });
 
-    // Broadcast across tabs
     if (broadcastChannelRef.current) {
       broadcastChannelRef.current.postMessage({
         type: 'TIMELINE_ITEM_UPSERT',
@@ -435,7 +622,6 @@ export function useRealtimeSync() {
       });
     }
 
-    // Sync to Supabase if available
     if (supabase) {
       try {
         await supabase.from('timeline_items').upsert(fullItem);
@@ -443,16 +629,14 @@ export function useRealtimeSync() {
         console.error('Failed to sync item to Supabase:', err);
       }
     }
-  }, [currentUser, trip.currency]);
+  }, [currentUser, activeTrip]);
 
   // MUTATION: Delete Timeline Item
   const deleteTimelineItem = useCallback(async (itemId: string) => {
     const supabase = getSupabase();
 
-    // Optimistic local state update
     setTimelineItems((prev) => prev.filter((i) => i.id !== itemId));
 
-    // Broadcast across tabs
     if (broadcastChannelRef.current) {
       broadcastChannelRef.current.postMessage({
         type: 'TIMELINE_ITEM_DELETE',
@@ -461,7 +645,6 @@ export function useRealtimeSync() {
       });
     }
 
-    // Sync to Supabase
     if (supabase) {
       try {
         await supabase.from('timeline_items').delete().eq('id', itemId);
@@ -473,13 +656,17 @@ export function useRealtimeSync() {
 
   // MUTATION: Add Plan
   const addPlan = useCallback(async (planData: Omit<Plan, 'id' | 'votes' | 'trip_id'>) => {
+    if (!activeTrip) {
+      throw new Error('No active trip to add plan to');
+    }
+
     const supabase = getSupabase();
-    const planId = `plan-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const planId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `plan-${Date.now()}`;
 
     const newPlan: Plan = {
       ...planData,
       id: planId,
-      trip_id: trip.id,
+      trip_id: activeTrip.id,
       votes: 0,
       created_by: currentUser.id,
       created_at: new Date().toISOString(),
@@ -504,7 +691,7 @@ export function useRealtimeSync() {
     }
 
     return newPlan;
-  }, [currentUser.id, trip.id]);
+  }, [currentUser.id, activeTrip]);
 
   // MUTATION: Delete Plan
   const deletePlan = useCallback(async (planId: string) => {
@@ -549,7 +736,6 @@ export function useRealtimeSync() {
       prev.map((p) => (p.id === planId ? { ...p, votes: Math.max(0, p.votes + delta) } : p))
     );
 
-    // Broadcast across tabs
     if (broadcastChannelRef.current) {
       broadcastChannelRef.current.postMessage({
         type: 'PLAN_VOTE',
@@ -558,12 +744,21 @@ export function useRealtimeSync() {
       });
     }
 
-    // Sync to Supabase
     if (supabase) {
       try {
         const targetPlan = plans.find((p) => p.id === planId);
         const newVotes = Math.max(0, (targetPlan?.votes || 0) + delta);
         await supabase.from('plans').update({ votes: newVotes }).eq('id', planId);
+
+        if (hasVoted) {
+          await supabase.from('plan_votes').delete().eq('plan_id', planId).eq('user_id', currentUser.id);
+        } else {
+          await supabase.from('plan_votes').upsert({
+            plan_id: planId,
+            user_id: currentUser.id,
+            created_at: new Date().toISOString(),
+          });
+        }
       } catch (err) {
         console.error('Failed to update vote in Supabase:', err);
       }
@@ -608,44 +803,43 @@ export function useRealtimeSync() {
     }
   }, []);
 
-  // MUTATION: Update Trip Meta
-  const updateTrip = useCallback(async (updatedTrip: Trip) => {
-    setTrip(updatedTrip);
-    const supabase = getSupabase();
-    if (supabase) {
-      try {
-        await supabase.from('trips').upsert(updatedTrip);
-      } catch (e) {
-        console.error(e);
-      }
+  // Clear local storage data
+  const clearLocalData = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(LOCAL_STORAGE_KEY_TRIPS);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_TRIP_ID);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_PLANS);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_ITEMS);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_VOTES);
     }
-  }, []);
-
-  // Reset to default sample trip
-  const resetToSampleData = useCallback(() => {
-    setTrip(INITIAL_TRIP);
-    setPlans(INITIAL_PLANS);
-    setTimelineItems(INITIAL_TIMELINE_ITEMS);
-    setTeamMembers(INITIAL_TEAM);
-    setUserVotes({ '11111111-1111-1111-1111-111111111111': true });
+    setTrips([]);
+    setActiveTripId(null);
+    setPlans([]);
+    setTimelineItems([]);
+    setUserVotes({});
   }, []);
 
   return {
     currentUser,
-    trip,
+    trips,
+    activeTrip,
+    activeTripId,
     plans,
     timelineItems,
     teamMembers,
     userVotes,
     syncStatus,
     recentNotification,
+    switchTrip,
+    createTrip,
+    updateTrip,
+    deleteTrip,
     upsertTimelineItem,
     deleteTimelineItem,
     addPlan,
     deletePlan,
     toggleVote,
     updateProfile,
-    updateTrip,
-    resetToSampleData,
+    clearLocalData,
   };
 }
